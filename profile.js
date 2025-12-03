@@ -1,151 +1,105 @@
-// Command: profile.js
-const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
+/* --- NEW: CHAT & SEARCH SYSTEM --- */
 
-// DOM Elements
-const views = {
-  profile: document.getElementById('view-profile'),
-  chatlist: document.getElementById('view-chatlist'),
-  chatroom: document.getElementById('view-chatroom'),
-  theme: document.getElementById('view-theme')
-};
-
-let currentUser = tg.initDataUnsafe?.user || { id: 12345, first_name: "Test", username: "tester" }; // Fallback for dev
-let currentChatPartner = null;
-
-// --- 1. Initialization & DB Sync ---
-async function init() {
-  // Sync user with MongoDB
-  try {
-    await fetch('/api/syncUser', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        tg_id: currentUser.id,
-        username: currentUser.username,
-        first_name: currentUser.first_name,
-        photo_url: currentUser.photo_url
-      })
-    });
-  } catch(e) { console.error("Sync Failed", e); }
-  
-  // UI Setup
-  document.getElementById("userName").textContent = currentUser.first_name;
-  document.getElementById("userAvatar").src = currentUser.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-  loadTheme();
-}
-
-// --- 2. Navigation ---
-window.switchView = (viewName) => {
-  Object.values(views).forEach(el => el.classList.remove('active'));
-  views[viewName.replace('view-', '')].classList.add('active');
-  
-  if (viewName === 'view-profile') tg.BackButton.hide();
-  else {
-    tg.BackButton.show();
-    tg.BackButton.onClick(() => switchView('view-profile'));
-  }
-};
-
-document.getElementById('openChatBtn').addEventListener('click', () => switchView('view-chatlist'));
-document.getElementById('themeEditBtn').addEventListener('click', () => switchView('view-theme'));
-
-// --- 3. Chat System ---
-
-// Search Users
+const chatOverlay = document.getElementById('chatOverlay');
+const mainContainer = document.getElementById('mainContainer');
 const searchInput = document.getElementById('userSearch');
-searchInput.addEventListener('input', async (e) => {
-  const query = e.target.value;
-  if (query.length < 3) return;
-  
-  const res = await fetch(`/api/search?query=${query}`);
-  const users = await res.json();
-  
-  const list = document.getElementById('searchResults');
-  list.classList.remove('hidden');
-  list.innerHTML = users.map(u => `
-    <div class="user-item" onclick="openChat(${u.tg_id}, '${u.first_name}')">
-      <img src="${u.photo_url || 'https://placehold.co/50'}">
-      <div><b>${u.first_name}</b><br><small>@${u.username}</small></div>
-    </div>
-  `).join('');
-});
+const suggestionList = document.getElementById('suggestionList');
+let searchTimeout;
 
-// Open Chat Room
-window.openChat = async (partnerId, partnerName) => {
-  currentChatPartner = partnerId;
-  document.getElementById('chatPartnerName').textContent = partnerName;
-  switchView('view-chatroom');
-  loadMessages();
-  // Start polling for new messages
-  if(window.chatInterval) clearInterval(window.chatInterval);
-  window.chatInterval = setInterval(loadMessages, 3000);
-};
-
-// Load Messages
-async function loadMessages() {
-  if(!currentChatPartner) return;
-  const res = await fetch(`/api/chat?u1=${currentUser.id}&u2=${currentChatPartner}`);
-  const msgs = await res.json();
-  
-  const area = document.getElementById('messageArea');
-  area.innerHTML = msgs.map(m => `
-    <div class="msg ${m.sender_id === currentUser.id ? 'out' : 'in'}">
-      ${m.text}
-    </div>
-  `).join('');
-  area.scrollTop = area.scrollHeight; // Scroll to bottom
+// 1. Open/Close Logic
+function openChatInterface() {
+  chatOverlay.classList.remove('hidden');
+  mainContainer.style.display = 'none'; // Background hide kar do performance ke liye
+  tg.BackButton.show();
+  tg.BackButton.onClick(closeChatInterface);
 }
 
-// Send Message
-document.getElementById('sendBtn').addEventListener('click', async () => {
-  const txt = document.getElementById('msgInput');
-  if (!txt.value) return;
+function closeChatInterface() {
+  chatOverlay.classList.add('hidden');
+  mainContainer.style.display = 'block';
+  tg.BackButton.hide();
+  // Reset view
+  document.getElementById('chatListView').classList.remove('hidden');
+  document.getElementById('chatRoomView').classList.add('hidden');
+}
+
+// 2. Type-as-you-go Search (Debounced)
+searchInput.addEventListener('input', (e) => {
+  const query = e.target.value.trim();
   
-  await fetch('/api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      sender_id: currentUser.id,
-      receiver_id: currentChatPartner,
-      text: txt.value
-    })
-  });
-  
-  txt.value = "";
-  loadMessages();
+  // Clear old results if empty
+  if(query.length === 0) {
+    suggestionList.innerHTML = '';
+    return;
+  }
+
+  // Thoda wait karo taaki server par load kam pade (300ms)
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => performSearch(query), 300);
 });
 
-// --- 4. Theme Editor ---
-const accentPicker = document.getElementById('accentPicker');
-const bgPicker = document.getElementById('bgPicker');
-const root = document.documentElement;
+async function performSearch(query) {
+  try {
+    // Show Loading Skeleton or Text
+    suggestionList.innerHTML = `<div style="text-align:center; opacity:0.6;">Searching "${query}"...</div>`;
 
-function loadTheme() {
-  const t = JSON.parse(localStorage.getItem('customTheme'));
-  if(t) {
-    root.style.setProperty('--accent', t.accent);
-    root.style.setProperty('--bg', t.bg);
-    accentPicker.value = t.accent;
-    bgPicker.value = t.bg;
+    const res = await fetch(`/api/search?query=${query}`);
+    const users = await res.json();
+
+    if(users.length === 0) {
+      suggestionList.innerHTML = `<div style="text-align:center; opacity:0.5;">No user found</div>`;
+      return;
+    }
+
+    // Render List
+    suggestionList.innerHTML = users.map(u => `
+      <div class="user-item" onclick="startChat(${u.tg_id}, '${u.first_name}')">
+        <img src="${u.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}">
+        <div>
+          <div style="font-weight:600">${u.first_name}</div>
+          <div style="font-size:0.8rem; opacity:0.7">@${u.username || 'unknown'}</div>
+        </div>
+      </div>
+    `).join('');
+    
+  } catch(e) {
+    console.error(e);
   }
 }
 
-[accentPicker, bgPicker].forEach(p => {
-  p.addEventListener('input', () => {
-    const themeData = { accent: accentPicker.value, bg: bgPicker.value };
-    root.style.setProperty('--accent', themeData.accent);
-    root.style.setProperty('--bg', themeData.bg);
-    localStorage.setItem('customTheme', JSON.stringify(themeData));
-  });
-});
+// 3. Start Chat (UI Switch)
+window.startChat = (id, name) => {
+  document.getElementById('chatListView').classList.add('hidden');
+  document.getElementById('chatRoomView').classList.remove('hidden');
+  document.getElementById('chatPartnerName').textContent = name;
+  
+  tg.BackButton.onClick(backToChatList);
+  
+  // Load messages logic (Aapka existing chat logic yahan aayega)
+  // loadMessages(id);
+};
 
-window.resetTheme = () => {
-  localStorage.removeItem('customTheme');
-  location.reload();
+function backToChatList() {
+  document.getElementById('chatRoomView').classList.add('hidden');
+  document.getElementById('chatListView').classList.remove('hidden');
+  tg.BackButton.onClick(closeChatInterface);
 }
 
-// Start
-init();
+// Ensure User is synced on load
+window.onload = async () => {
+    // ... (Old loader logic) ...
+    // Sync current user silently
+    if(u.id) {
+        fetch('/api/syncUser', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                tg_id: u.id,
+                username: u.username,
+                first_name: u.first_name,
+                photo_url: u.photo_url
+            })
+        });
+    }
+};
  
