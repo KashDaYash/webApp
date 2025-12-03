@@ -1,16 +1,19 @@
 // Command: profile.js
 const tg = window.Telegram.WebApp;
 
-// Initialize properly
+// 1. Initialize
 tg.ready(); 
 tg.expand(); 
 tg.enableVerticalSwipes();
-
 try { tg.requestFullscreen(); } catch(e){}
 
+// Set Colors
 tg.setHeaderColor("#1c1c1c"); 
 tg.setBackgroundColor("#1e1e1e"); 
 tg.setBottomBarColor("#000000");
+
+// --- CONFIG ---
+const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app/api";
 
 // --- LOCALIZATION ---
 const localization = {
@@ -20,7 +23,9 @@ const localization = {
     language: "🌐 Language", theme: "🎨 Theme",
     close: "✦ Close Profile ✦", copied: "Copied!",
     language_question: "Select Language:", language_current: "Language changed to English 🇬🇧",
-    chats_title: "Chats", not_available: "Not Available", user_not_found: "User Not Found"
+    chats_title: "Chats", not_available: "Not Available", user_not_found: "User Not Found",
+    reset_confirm: "Are you sure you want to reset the theme?", reset_success: "Theme Reset!",
+    no_chats: "No conversations found.", loading_chats: "Loading chats..."
   },
   hi: {
     title: "आपकी प्रोफाइल", premium: "💸 प्रीमियम", id: "आईडी:", username: "यूज़रनेम:",
@@ -28,7 +33,9 @@ const localization = {
     language: "🌐 भाषा", theme: "🎨 थीम",
     close: "✦ प्रोफाइल बंद करें ✦", copied: "कॉपी किया गया!",
     language_question: "भाषा चुनें:", language_current: "भाषा हिंदी में बदल दी गई है 🇮🇳",
-    chats_title: "चैट्स", not_available: "उपलब्ध नहीं", user_not_found: "उपयोगकर्ता नहीं मिला"
+    chats_title: "चैट्स", not_available: "उपलब्ध नहीं", user_not_found: "उपयोगकर्ता नहीं मिला",
+    reset_confirm: "क्या आप थीम रिसेट करना चाहते हैं?", reset_success: "थीम रिसेट हो गई!",
+    no_chats: "कोई संदेश नहीं मिला", loading_chats: "चैट लोड हो रही हैं..."
   }
 };
 
@@ -39,36 +46,23 @@ let theme = localStorage.getItem("theme") || tg.colorScheme || "dark";
 
 function applyCustomColor(hexColor) {
   if (!/^#([0-9A-F]{3}){1,2}$/i.test(hexColor)) { tg.showAlert("Invalid Hex Code!"); return; }
-  
   root.style.setProperty('--accent', hexColor);
-  
-  // Create transparent glow
-  const r = parseInt(hexColor.slice(1, 3), 16);
-  const g = parseInt(hexColor.slice(3, 5), 16);
-  const b = parseInt(hexColor.slice(5, 7), 16);
+  const r = parseInt(hexColor.slice(1, 3), 16), g = parseInt(hexColor.slice(3, 5), 16), b = parseInt(hexColor.slice(5, 7), 16);
   root.style.setProperty('--glow', `rgba(${r}, ${g}, ${b}, 0.45)`);
-  
   localStorage.setItem("customAccentColor", hexColor);
 }
 
 function applyTheme(name){
   const customColor = localStorage.getItem("customAccentColor");
-  if (customColor) {
-    applyCustomColor(customColor); // Re-apply custom color logic
-  } else {
-    root.style.removeProperty('--accent'); root.style.removeProperty('--glow');
-  }
+  if (customColor) applyCustomColor(customColor);
+  else { root.style.removeProperty('--accent'); root.style.removeProperty('--glow'); }
   
   if(name==="light"){ 
-      root.classList.add("light-theme"); 
-      toggle.textContent="☀️"; 
-      tg.setHeaderColor("#ffffff");
-      tg.setBackgroundColor("#f5f5f5");
+      root.classList.add("light-theme"); toggle.textContent="☀️"; 
+      tg.setHeaderColor("#ffffff"); tg.setBackgroundColor("#f5f5f5");
   } else { 
-      root.classList.remove("light-theme"); 
-      toggle.textContent="🌙"; 
-      tg.setHeaderColor("#1c1c1c");
-      tg.setBackgroundColor("#1e1e1e");
+      root.classList.remove("light-theme"); toggle.textContent="🌙"; 
+      tg.setHeaderColor("#1c1c1c"); tg.setBackgroundColor("#1e1e1e");
   }
 }
 applyTheme(theme);
@@ -81,42 +75,24 @@ toggle.addEventListener("click", () => {
   applyTheme(theme);
 });
 
-// --- USER DATA & INIT LOGIC ---
-// Global Variables
-let user = {};
-let langCode = "en";
 
-function loadUserData() {
-    // 1. Try to get data from Telegram
-    const unsafeUser = tg.initDataUnsafe?.user;
-    
-    // 2. LocalStorage Language check
-    const savedLang = localStorage.getItem("languageCode");
+// --- USER DATA (Clean One-Liner Logic) ---
+// Yahan humne wahi logic use kiya jo aapne bola 👇
+const user = tg.initDataUnsafe?.user || {};
 
-    if (unsafeUser) {
-        user = unsafeUser;
-        // Agar user ka telegram lang code hai aur humne save nahi kiya, to use karein
-        if (!savedLang && user.language_code) {
-            langCode = user.language_code.split("-")[0];
-        } else if (savedLang) {
-            langCode = savedLang;
-        }
-    } else {
-        // Data nahi mila (Browser Mode)
-        user = {}; // Empty object
-        langCode = savedLang || "en";
-    }
-
-    // Default to EN if lang not supported
-    if (!localization[langCode]) langCode = "en";
-
-    renderProfile();
+// Language detect logic
+let langCode = localStorage.getItem("languageCode");
+if (!langCode) {
+    // Agar saved nahi hai, to Telegram ki language use karein, ya default 'en'
+    langCode = (user.language_code || "en").split("-")[0];
 }
+if (!localization[langCode]) langCode = "en";
+
 
 function renderProfile() {
     const lang = localization[langCode];
     
-    // --- TEXT UPDATES ---
+    // Text Updates
     document.title = lang.title;
     document.querySelector('.profile-body .info:nth-child(1) strong').textContent = lang.id;
     document.querySelector('.profile-body .info:nth-child(2) strong').textContent = lang.username;
@@ -130,17 +106,15 @@ function renderProfile() {
     
     document.querySelector('.chat-header h3').textContent = lang.chats_title;
 
-    // --- DATA FILLING ---
+    // Data Filling
     const realName = [user.first_name, user.last_name].filter(Boolean).join(" ");
     
     document.getElementById("userName").textContent = realName || lang.user_not_found;
     document.getElementById("userId").textContent = user.id || lang.not_available;
     document.getElementById("userHandle").textContent = user.username ? "@"+user.username : lang.not_available;
-    
-    // Avatar
     document.getElementById("userAvatar").src = user.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
-    // Premium
+    // Premium Check
     const premTag = document.getElementById("userPremium");
     if(user.is_premium) {
         premTag.innerHTML = lang.premium;
@@ -149,21 +123,20 @@ function renderProfile() {
         premTag.classList.add("hidden");
     }
 
-    // Language Badge
+    // Lang Display
     const langMap = { en:"🇬🇧 English", ru:"🇷🇺 Русский", hi:"🇮🇳 हिन्दी", es:"🇪🇸 Español", de:"🇩🇪 Deutsch" };
     document.getElementById("userLanguage").textContent = langMap[langCode] || langCode.toUpperCase();
 }
 
-// Initial Load
-loadUserData();
+renderProfile(); // Initial Render
 
-// Lottie Animation
+// Lottie
 lottie.loadAnimation({
   container: document.getElementById("lottie"), renderer: "svg", loop: true, autoplay: true,
   path: "https://assets2.lottiefiles.com/packages/lf20_jv4xehxh.json"
 });
 
-// Copy Feature
+// Copy Logic
 document.querySelectorAll(".copyable").forEach(el=>{
   const span = el.querySelector("span");
   el.addEventListener("click",()=>{
@@ -186,7 +159,7 @@ function startLoader() {
     const bar = document.getElementById("progressBar");
     const txt = document.getElementById("progressText");
     const interval = setInterval(()=>{
-        prog += 2; // Thoda fast kar diya
+        prog += 2; 
         bar.style.width = prog + "%"; txt.textContent = prog + "%";
         if(prog >= 100){
             clearInterval(interval);
@@ -194,8 +167,7 @@ function startLoader() {
             setTimeout(()=>{
                 document.getElementById("loadingScreen").style.display="none";
                 document.getElementById("mainContainer").style.display="flex"; 
-                document.querySelector(".container").style.display="flex"; // Ensure Flex is applied
-                
+                document.querySelector(".container").style.display="flex"; 
                 const lang = localization[langCode];
                 tg.MainButton.setText(lang.close).setParams({has_shine_effect:true}).show().onClick(()=>tg.close());
             },300);
@@ -221,64 +193,52 @@ function handleMenuItemClick(event) {
     const itemText = event.currentTarget.textContent.trim();
     tg.HapticFeedback.impactOccurred('light');
     
-    // Close menu
     menuBody.style.display = "none";
     menuToggle.classList.remove("rotated");
     
     const lang = localization[langCode];
 
-    // 1. LANGUAGE CLICK FIX
     if (itemText.includes(lang.language)) {
         tg.showPopup({
-            title: lang.language_question,
-            message: "Select Interface Language:",
+            title: lang.language_question, message: "Select Interface Language:",
             buttons: [ 
                 { id: 'en', text: '🇬🇧 English', type: 'default' }, 
                 { id: 'hi', text: '🇮🇳 हिन्दी', type: 'default' }, 
                 { id: 'cancel', text: 'Cancel', type: 'cancel' } 
             ]
         }, (btnId) => {
-            // Callback function fixed
             if (btnId === 'en' || btnId === 'hi') {
                 langCode = btnId;
                 localStorage.setItem("languageCode", btnId);
-                renderProfile(); // Update UI immediately
+                renderProfile();
                 tg.showAlert(localization[langCode].language_current);
             }
         });
     } 
-    // 2. THEME CLICK
     else if (itemText.includes(lang.theme)) {
         const initialColor = localStorage.getItem("customAccentColor") || "#839ef0";
         colorInput.value = initialColor; hexDisplay.value = initialColor.toUpperCase();
         colorOverlay.classList.remove("hidden");
     }
-    // 3. MESSAGES
     else if (itemText.includes(lang.messages)) { 
         showChatInterface();
     }
-    // 4. SETTINGS
     else if (itemText.includes(lang.settings)) {
          tg.showAlert("Settings not available yet.");
     }
 }
 
-// --- CHAT INTERFACE ---
+// --- CHAT INTERFACE & API ---
 const chatContainer = document.getElementById("chatContainer");
 const backToProfileBtn = document.getElementById("backToProfileBtn");
 const chatList = document.getElementById("chatList");
+const chatSearchInput = document.getElementById("chatSearchInput");
 
 function showChatInterface() {
     chatContainer.classList.remove("hidden");
     document.getElementById("mainContainer").classList.add("hidden"); 
     tg.BackButton.show(); 
-    
-    // Load empty state
-    chatList.innerHTML = '';
-    const emptyState = document.createElement("div");
-    emptyState.className = "loading-chats";
-    emptyState.textContent = (langCode === 'hi') ? "कोई संदेश नहीं मिला" : "No conversations found";
-    chatList.appendChild(emptyState);
+    fetchChats(); 
 }
 
 function hideChatInterface() {
@@ -290,8 +250,75 @@ function hideChatInterface() {
 tg.BackButton.onClick(hideChatInterface);
 backToProfileBtn.addEventListener("click", hideChatInterface);
 
+async function fetchChats() {
+    const lang = localization[langCode];
+    chatList.innerHTML = `<div class="loading-chats">${lang.loading_chats}</div>`;
 
-// --- COLOR PICKER (Fix: Close on Set) ---
+    try {
+        const userId = user.id || 0;
+        const res = await fetch(`${VERCEL_BASE_URL}/get-chats?user_id=${userId}`);
+        const data = await res.json();
+
+        chatList.innerHTML = ''; 
+
+        if (data.success && data.data.length > 0) {
+            renderChatList(data.data);
+        } else {
+            showNoChatsMessage();
+        }
+    } catch (e) {
+        showNoChatsMessage();
+    }
+}
+
+function renderChatList(chats) {
+    chats.forEach(chat => {
+        const el = document.createElement("div");
+        el.className = "chat-item";
+        el.setAttribute("data-name", chat.participant_name.toLowerCase()); 
+        el.innerHTML = `
+            <img src="${chat.avatar}" class="chat-avatar">
+            <div class="chat-info">
+                <div class="chat-name">${chat.participant_name}</div>
+                <div class="chat-last-msg">${chat.last_message}</div>
+            </div>
+            <div class="chat-meta">
+                <span>${chat.time}</span>
+                ${chat.unread_count > 0 ? `<div class="unread-badge">${chat.unread_count}</div>` : ''}
+            </div>
+        `;
+        el.addEventListener("click", () => tg.showAlert("Opening chat..."));
+        chatList.appendChild(el);
+    });
+}
+
+function showNoChatsMessage() {
+    const lang = localization[langCode];
+    const empty = document.createElement("div");
+    empty.className = "loading-chats";
+    empty.textContent = lang.no_chats;
+    chatList.appendChild(empty);
+}
+
+// Search Logic
+chatSearchInput.addEventListener("input", (e) => {
+    const term = e.target.value.toLowerCase();
+    const items = document.querySelectorAll(".chat-item");
+    let visibleCount = 0;
+    
+    items.forEach(item => {
+        const name = item.getAttribute("data-name");
+        if (name.includes(term)) {
+            item.style.display = "flex";
+            visibleCount++;
+        } else {
+            item.style.display = "none";
+        }
+    });
+});
+
+
+// --- COLOR PICKER ---
 const colorOverlay = document.getElementById("colorPickerOverlay");
 const colorInput = document.getElementById("colorPickerInput");
 const hexDisplay = document.getElementById("hexInputDisplay");
@@ -301,18 +328,24 @@ const cancelColorBtn = document.getElementById("cancelColorBtn");
 
 colorInput.addEventListener('input', () => hexDisplay.value = colorInput.value.toUpperCase());
 hexDisplay.addEventListener('input', () => { if (/^#([0-9A-F]{3}){1,2}$/i.test(hexDisplay.value)) colorInput.value = hexDisplay.value; });
+
 function hideColorPicker() { colorOverlay.classList.add("hidden"); }
 
 setColorBtn.addEventListener("click", () => { 
     applyCustomColor(colorInput.value); 
-    hideColorPicker(); // Ye ab popup band kar dega
+    hideColorPicker(); 
 });
 
 resetColorBtn.addEventListener("click", () => { 
-    localStorage.removeItem("customAccentColor"); 
-    applyTheme(theme); 
-    tg.showAlert("Theme Reset!"); 
-    hideColorPicker(); 
+    const lang = localization[langCode];
+    tg.showConfirm(lang.reset_confirm, (confirmed) => {
+        if (confirmed) {
+            localStorage.removeItem("customAccentColor"); 
+            applyTheme(theme); 
+            tg.showAlert(lang.reset_success); 
+            hideColorPicker(); 
+        }
+    });
 });
 
 cancelColorBtn.addEventListener("click", hideColorPicker);
