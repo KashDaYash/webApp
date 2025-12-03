@@ -86,10 +86,10 @@ const user = tg.initDataUnsafe?.user || {};
 // Jab sab sahi ho jaye, is line ko hata dena.
 if(user.id) {
     // Data mila
-    // alert("User Data:\n" + JSON.stringify(user, null, 2));
+    alert("User Data:\n" + JSON.stringify(user, null, 2));
 } else {
     // Data nahi mila
-    // alert("No User Data Found (Browser Mode?)");
+    alert("No User Data Found (Browser Mode?)");
 }
 
 
