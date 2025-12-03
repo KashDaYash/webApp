@@ -1,379 +1,215 @@
-/* -------------------------------------------------------
-   BASE RESET + VARIABLES
---------------------------------------------------------*/
+/* Command: profile.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+
+.hidden { display: none !important; }
+
 * {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  transition: background-color .25s ease,
+              color .25s ease,
+              box-shadow .25s ease,
+              transform .25s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
+/* Color System */
 :root {
-  --bg: #f1f1f5;
-  --card: rgba(255,255,255,0.72);
-  --text: #111;
-  --text-soft: #666;
-  --blue: #007aff;
-  --border: rgba(0,0,0,0.08);
-  --glass-blur: 18px;
+  --bg: #1e1e1e;
+  --card-bg: rgba(28,28,30,0.92);
+  --text: #ffffff;
+  --accent: #839ef0;
+  --glow: rgba(46,140,255,0.45);
+  --bg-dark: #1e1e1e;
 }
 
-html.dark {
-  --bg: #0d0d0f;
-  --card: rgba(22,22,26,0.72);
-  --text: #fff;
-  --text-soft: #aaa;
-  --border: rgba(255,255,255,0.06);
+.light-theme {
+  --bg: #f5f5f5;
+  --card-bg: rgba(255,255,255,0.92);
+  --text: #1e1e1e;
+  --accent: #0077cc;
+  --glow: rgba(0,119,204,0.45);
 }
 
-/* -------------------------------------------------------
-   BODY + BACKGROUND
---------------------------------------------------------*/
-body {
+/* Layout */
+html, body {
+  width: 100%; height: 100%;
+  margin: 0; padding: env(safe-area-inset);
+  font-family: 'Inter', sans-serif;
   background: var(--bg);
   color: var(--text);
-  transition: background .3s ease, color .3s ease;
-  padding-bottom: 110px;
-}
-
-.hidden { display: none; }
-
-/* -------------------------------------------------------
-   PAGE HANDLING (SPA)
---------------------------------------------------------*/
-.page {
-  display: none;
-  opacity: 0;
-  transform: translateY(15px);
-  transition: all .3s ease;
-}
-
-.page.active {
-  display: block;
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* -------------------------------------------------------
-   LOADING SCREEN
---------------------------------------------------------*/
-#loadingScreen {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #000;
-  z-index: 9999;
-  transition: opacity .3s ease;
-}
-
-.loader-box {
-  background: rgba(255,255,255,0.12);
-  padding: 22px;
-  border-radius: 18px;
-  backdrop-filter: blur(16px);
-  text-align: center;
-}
-
-.loader-progress {
-  width: 260px;
-  height: 10px;
-  background: rgba(255,255,255,0.2);
-  border-radius: 12px;
+  display: flex; justify-content: center; align-items: center;
   overflow: hidden;
-  margin-bottom: 12px;
 }
 
-#progressBar {
-  width: 0%;
-  height: 100%;
-  background: var(--blue);
-  transition: width .25s linear;
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  background: linear-gradient(120deg, var(--bg), #2a2a2a);
+  background-size: 200% 200%;
+  animation: bgFlow 22s linear infinite;
+  z-index: -2;
 }
 
-#progressText {
-  color: white;
-  font-size: 16px;
+@keyframes bgFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-/* -------------------------------------------------------
-   iOS GLASS CARD
---------------------------------------------------------*/
-.ios-card {
-  background: var(--card);
-  backdrop-filter: blur(var(--glass-blur));
-  border-radius: 20px;
-  padding: 22px;
-  margin: 22px;
-  border: 1px solid var(--border);
-  box-shadow: 0 6px 20px rgba(0,0,0,0.05);
-  transition: background .3s ease, color .3s ease;
-}
-
-/* -------------------------------------------------------
-   HOME PAGE
---------------------------------------------------------*/
-.home-card h2 {
-  font-size: 28px;
-  font-weight: 700;
-  margin-bottom: 14px;
-}
-
-.coins-display {
-  font-size: 20px;
-  margin-bottom: 18px;
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-}
-
-.home-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
-.ios-btn {
-  padding: 10px 18px;
-  background: var(--blue);
-  border: none;
-  color: white;
-  border-radius: 14px;
-  font-weight: 600;
-  font-size: 15px;
-  cursor: pointer;
-  transition: .2s;
-}
-
-.ios-btn:active {
-  transform: scale(.96);
-}
-
-/* -------------------------------------------------------
-   PROFILE PAGE
---------------------------------------------------------*/
-.profile-card {
-  text-align: center;
-  position: relative;
-}
-
-.theme-toggle {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  border: none;
-  background: transparent;
-  font-size: 24px;
-  cursor: pointer;
-}
-
-.avatar-section {
-  width: 120px;
-  height: 120px;
-  margin: 0 auto 14px;
-  position: relative;
-}
-
-.avatar {
-  width: 120px;
-  height: 120px;
-  border-radius: 100%;
-  object-fit: cover;
-  border: 3px solid var(--blue);
-}
-
-.avatar-glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 160px;
-  height: 160px;
-  transform: translate(-50%, -50%);
+body::after {
+  content: '';
+  position: fixed; inset: 0;
+  background: url('https://cdn.jsdelivr.net/gh/joshbsmith/noiseTexture/NoiseTransparent10.png');
+  opacity: .06;
   z-index: -1;
 }
 
-.profile-name {
-  font-size: 24px;
-  font-weight: 700;
-  margin-bottom: 6px;
+/* Loader */
+#loadingScreen {
+  position: fixed; inset: 0;
+  background: var(--bg-dark);
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  transition: opacity .3s ease;
+  z-index: 9999;
 }
 
-.premium-badge {
-  background: var(--blue);
-  color: white;
-  padding: 6px 14px;
-  border-radius: 20px;
-  display: inline-block;
-  margin-bottom: 6px;
-  font-size: 14px;
+.progress-wrapper {
+  width: 70%; max-width: 300px; height: 8px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 4px;
 }
 
-.lang-badge {
-  background: var(--border);
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 14px;
+.progress-bar {
+  width: 0%; height: 100%;
+  background: var(--accent);
 }
 
-.profile-info {
-  margin-top: 18px;
+.progress-text { margin-top: 8px; }
+
+/* Container */
+.container {
+  display: none;
+  animation: fadeIn .6s ease forwards;
 }
 
-.info-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 4px;
-  border-bottom: 1px solid var(--border);
-  font-size: 16px;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-/* -------------------------------------------------------
-   STATS PAGE
---------------------------------------------------------*/
-.stats-card h2 {
-  font-size: 26px;
+/* Profile Card */
+.profile-card {
+  width: 90%; max-width: 360px;
+  padding: 24px;
   text-align: center;
-  margin-bottom: 20px;
+  backdrop-filter: blur(18px);
+  background: var(--card-bg);
+  border-radius: 22px;
+  box-shadow: 0 0 25px var(--glow);
 }
 
-.stats-item {
-  display: flex;
-  justify-content: space-between;
-  font-size: 18px;
-  margin-bottom: 16px;
-}
-
-.stats-lottie-container {
-  display: flex;
-  justify-content: center;
-  margin-top: 12px;
-}
-
-.stats-lottie {
-  width: 200px;
-  height: 200px;
-}
-
-/* -------------------------------------------------------
-   CHAT PAGE
---------------------------------------------------------*/
-.chat-card {
-  height: calc(100vh - 200px);
-  display: flex;
-  flex-direction: column;
-}
-
-.chat-area {
-  flex: 1;
-  overflow-y: auto;
-  padding-right: 6px;
-  margin-bottom: 12px;
-}
-
-.chat-bubble-user {
-  background: var(--blue);
-  color: white;
-  padding: 10px 14px;
-  border-radius: 16px;
-  margin: 6px 0 6px auto;
-  max-width: 75%;
-}
-
-.chat-bubble-owner {
-  background: rgba(255,255,255,0.4);
+/* Theme Toggle */
+.theme-toggle {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 36px; height: 36px;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  background: var(--card-bg);
   color: var(--text);
-  padding: 10px 14px;
-  border-radius: 16px;
-  margin: 6px auto 6px 0;
-  max-width: 75%;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 10px var(--glow);
 }
 
-.chat-input-wrapper {
-  display: flex;
+.theme-toggle.animate {
+  animation: rotateIcon .4s ease;
+}
+
+@keyframes rotateIcon {
+  to { transform: rotate(360deg); }
+}
+
+/* Avatar */
+.avatar-wrapper { position: relative; width: 84px; margin: 0 auto 16px; }
+
+.avatar {
+  width: 84px; height: 84px;
+  border-radius: 50%; border: 3px solid var(--accent);
+  object-fit: cover;
+}
+
+.lottie-glow {
+  position: absolute;
+  width: 110px; height: 110px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Profile body */
+.profile-body { margin-top: 20px; }
+
+.info {
+  display: flex; justify-content: space-between;
+  margin: 10px 0;
+}
+
+.tooltip {
+  position: absolute; bottom: 100%; left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background: rgba(0,0,0,.75);
+  border-radius: 4px;
+  color: #fff;
+  opacity: 0;
+  transition: opacity .2s ease;
+  font-size: .75rem;
+}
+
+/* Expandable Menu */
+.menu-card {
+  width: 90%; max-width: 360px;
+  margin-top: 16px;
+  padding: 16px 18px;
+  backdrop-filter: blur(14px);
+  background: var(--card-bg);
+  border-radius: 20px;
+  box-shadow: 0 0 20px var(--glow);
+}
+
+.menu-header {
+  display: flex; justify-content: space-between;
+  align-items: center;
+}
+
+.menu-toggle {
+  border: none;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--card-bg);
+  font-size: 1.1rem;
+  color: var(--text);
+  cursor: pointer;
+  transition: transform .3s;
+}
+
+.menu-toggle.rotated { transform: rotate(180deg); }
+
+.menu-body {
+  margin-top: 12px;
+  display: none;
+  flex-direction: column;
   gap: 10px;
 }
 
-#chatInput {
-  flex: 1;
+.menu-item {
   padding: 10px 14px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  outline: none;
-  background: var(--card);
-}
-
-#chatSend {
-  padding: 0 18px;
-  border-radius: 14px;
-  border: none;
-  background: var(--blue);
-  color: white;
-  font-size: 20px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06);
   cursor: pointer;
+  transition: background .2s;
 }
 
-/* -------------------------------------------------------
-   SETTINGS PAGE
---------------------------------------------------------*/
-.settings-block {
-  margin-bottom: 18px;
-}
-
-.settings-label {
-  font-size: 16px;
-  display: block;
-  margin-bottom: 6px;
-}
-
-.ios-select {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--text);
-}
-
-/* -------------------------------------------------------
-   FLOATING IOS NAVBAR
---------------------------------------------------------*/
-.ios-navbar {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--card);
-  padding: 12px 18px;
-  border-radius: 28px;
-  backdrop-filter: blur(var(--glass-blur));
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  width: 92%;
-  max-width: 530px;
-  border: 1px solid var(--border);
-}
-
-.nav-item {
-  text-align: center;
-  font-size: 22px;
-  flex: 1;
-  padding: 6px 0;
-  border-radius: 14px;
-  color: var(--text-soft);
-  cursor: pointer;
-  transition: .2s;
-}
-
-.nav-item span {
-  display: block;
-  font-size: 12px;
-  margin-top: 4px;
-}
-
-.nav-item.active {
-  color: var(--blue);
-  font-weight: 600;
-  transform: scale(1.1);
-}
+.menu-item:active {
+  background: rgba(255,255,255,0.12);
+       } 
