@@ -20,7 +20,7 @@ const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app";
 const u = tg.initDataUnsafe?.user || {};
 
 // Debug ke liye (Baad me hata dena)
-alert("User loaded:", u);
+alert("User loaded:", u.username);
 
 // --- LOCALIZATION ---
 const localization = {
