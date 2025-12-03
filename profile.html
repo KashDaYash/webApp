@@ -1,4 +1,3 @@
-<!-- Command: profile.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,7 +13,6 @@
 
 <body>
 
-  <!-- Loading Screen -->
   <div id="loadingScreen">
     <div class="progress-wrapper">
       <div id="progressBar" class="progress-bar"></div>
@@ -22,10 +20,8 @@
     <div id="progressText" class="progress-text">0%</div>
   </div>
 
-  <!-- Profile Container -->
   <div class="container">
 
-    <!-- Profile Card -->
     <div class="profile-card">
 
       <button id="themeToggle" class="theme-toggle">🌙</button>
@@ -51,7 +47,6 @@
 
     </div>
 
-    <!-- Expandable Menu -->
     <div class="menu-card">
       <div class="menu-header">
         <h3>Options</h3>
@@ -69,6 +64,57 @@
 
   </div>
 
+  <div id="colorPickerOverlay" class="hidden">
+    <style>
+      /* Basic Overlay Style */
+      #colorPickerOverlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(5px);
+        z-index: 9000;
+        display: flex; justify-content: center; align-items: center;
+      }
+      .color-picker-box {
+        background: var(--card-bg);
+        padding: 24px; border-radius: 16px;
+        box-shadow: 0 0 20px var(--glow);
+        text-align: center;
+      }
+      .color-input-wrapper {
+          margin: 15px 0;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          gap: 10px;
+      }
+      #colorPickerInput {
+          width: 80px; height: 40px;
+          padding: 0; border: none;
+          background: transparent;
+      }
+      .picker-button {
+        padding: 8px 15px; border-radius: 10px;
+        margin: 5px;
+        border: none; cursor: pointer;
+        font-weight: 600;
+      }
+      #setColorBtn { background: var(--accent); color: var(--text); }
+      #resetColorBtn { background: #333; color: white; }
+      #cancelColorBtn { background: #555; color: white; }
+    </style>
+
+    <div class="color-picker-box">
+      <h3>Custom Theme Color</h3>
+      <div class="color-input-wrapper">
+          <input type="color" id="colorPickerInput" value="#839ef0">
+          <input type="text" id="hexInputDisplay" value="#839ef0" style="padding: 5px; border-radius: 5px; width: 100px; background: var(--bg-dark); color: var(--text);">
+      </div>
+      <button id="setColorBtn" class="picker-button">Set Color</button>
+      <button id="resetColorBtn" class="picker-button">Reset Default</button>
+      <button id="cancelColorBtn" class="picker-button">Cancel</button>
+    </div>
+  </div>
   <script src="profile.js"></script>
 </body>
-          </html>
+</html>
+ 
