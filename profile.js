@@ -1,253 +1,122 @@
-/* ---------------------------------------------------------
-   TELEGRAM INITIAL SETUP
---------------------------------------------------------- */
+// Command: profile.js
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 tg.enableVerticalSwipes();
 
-// Inline button → sendData fix
-tg.sendData("request_user");
+try { tg.requestFullscreen(); } catch(e){}
 
-/* ---------------------------------------------------------
-   API BASE URL (FIXED)
---------------------------------------------------------- */
-const API_BASE = "https://profiletele.vercel.app/api";
+tg.setHeaderColor("#1c1c1c");
+tg.setBackgroundColor("#1e1e1e");
+tg.setBottomBarColor("#000000");
 
-/* ---------------------------------------------------------
-   LOADING SCREEN
---------------------------------------------------------- */
-let prog = 0;
-const bar = document.getElementById("progressBar");
-const txt = document.getElementById("progressText");
+/* Theme */
+const root = document.documentElement;
+const toggle = document.getElementById("themeToggle");
+let theme = localStorage.getItem("theme") || tg.colorScheme || "dark";
 
-let loadInterval = setInterval(() => {
-  prog += 1;
-  bar.style.width = prog + "%";
-  txt.textContent = prog + "%";
-
-  if (prog >= 100) {
-    clearInterval(loadInterval);
-    setTimeout(() => {
-      document.getElementById("loadingScreen").style.opacity = "0";
-      setTimeout(() => {
-        document.getElementById("loadingScreen").style.display = "none";
-        document.getElementById("app").classList.remove("hidden");
-      }, 400);
-    }, 200);
-  }
-}, 18);
-
-/* ---------------------------------------------------------
-   USER DATA FETCH LOOP
---------------------------------------------------------- */
-let currentUser = {};
-
-async function fetchUser() {
-  try {
-    const r = await fetch(`${API_BASE}/user`);
-    currentUser = await r.json();
-
-    if (!currentUser.id) return;
-
-    // PROFILE FIELDS
-    document.getElementById("userId").textContent = currentUser.id;
-
-    document.getElementById("userHandle").textContent =
-      currentUser.username ? "@" + currentUser.username : "—";  // FIXED
-
-    // Full name
-    const fullName =
-      (currentUser.first_name || "") +
-      " " +
-      (currentUser.last_name || "");
-    document.getElementById("userName").textContent =
-      fullName.trim() || "User";
-
-    // Avatar
-    if (currentUser.photo_url) {
-      document.getElementById("userAvatar").src = currentUser.photo_url;
-    }
-
-    // Premium badge
-    if (currentUser.is_premium) {
-      document.getElementById("userPremium").classList.remove("hidden");
-    }
-
-    // Language
-    document.getElementById("userLanguage").textContent =
-      (currentUser.language_code || "EN").toUpperCase();
-
-    // Welcome title
-    document.getElementById("welcomeTitle").textContent =
-      "Welcome " + (currentUser.first_name || "");
-
-    // Coins (Home + Stats)
-    const coins = currentUser.coins ?? 0;
-    document.getElementById("homeCoins").textContent = coins;
-    document.getElementById("statsCoins").textContent = coins;
-
-  } catch (err) {
-    console.warn("User fetch error:", err);
-  }
-}
-
-setInterval(fetchUser, 700);
-
-/* ---------------------------------------------------------
-   LOTTIE ANIMATIONS
---------------------------------------------------------- */
-setTimeout(() => {
-  try {
-    // Avatar glow
-    lottie.loadAnimation({
-      container: document.getElementById("avatarGlow"),
-      renderer: "svg",
-      loop: true,
-      autoplay: true,
-      path: "https://lottie.host/6e4c90cb-8f89-4bbf-8dc6-dc016fcfe948/zx2Vzzb7eU.json"
-    });
-
-    // Stats animation
-    lottie.loadAnimation({
-      container: document.getElementById("statsLottie"),
-      renderer: "svg",
-      loop: true,
-      autoplay: true,
-      path: "https://lottie.host/9e2f0f12-5fb5-4b65-af49-77b7d19c6582/SmmY6gPRif.json"
-    });
-  } catch {}
-}, 700);
-
-/* ---------------------------------------------------------
-   SPA NAVIGATION (FIXED)
---------------------------------------------------------- */
-const navItems = document.querySelectorAll(".nav-item");
-const pages = document.querySelectorAll(".page");
-
-function openPage(id) {
-  pages.forEach(p => p.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-
-  navItems.forEach(n => n.classList.remove("active"));
-  document
-    .querySelector(`.nav-item[data-page="${id}"]`)
-    .classList.add("active");
-}
-
-// Navbar click
-navItems.forEach(btn => {
-  btn.addEventListener("click", () => openPage(btn.dataset.page));
-});
-
-// FIX: Home "View Profile" button
-document.querySelectorAll("[data-open]").forEach(btn => {
-  btn.onclick = () => openPage(btn.dataset.open);
-});
-
-/* ---------------------------------------------------------
-   THEME SYSTEM (LIGHT / DARK)
---------------------------------------------------------- */
-const themeToggle = document.getElementById("themeToggle");
-const themeSelect = document.getElementById("themeSelect");
-
-let theme = localStorage.getItem("theme") || "dark";
 applyTheme(theme);
-themeSelect.value = theme;
 
-// profile toggle button
-themeToggle.onclick = () => {
+toggle.addEventListener("click", () => {
   theme = theme === "dark" ? "light" : "dark";
   localStorage.setItem("theme", theme);
-  themeSelect.value = theme;
+  toggle.classList.add("animate");
+  toggle.addEventListener("animationend",()=>toggle.classList.remove("animate"),{once:true});
   applyTheme(theme);
-};
+});
 
-// settings dropdown
-themeSelect.onchange = e => {
-  theme = e.target.value;
-  localStorage.setItem("theme", theme);
-  applyTheme(theme);
-};
-
-function applyTheme(name) {
-  if (name === "light") {
-    document.documentElement.classList.remove("dark");
-    themeToggle.textContent = "🌙";
+function applyTheme(name){
+  if(name==="light"){
+    root.classList.add("light-theme");
+    toggle.textContent="☀️";
   } else {
-    document.documentElement.classList.add("dark");
-    themeToggle.textContent = "☀️";
+    root.classList.remove("light-theme");
+    toggle.textContent="🌙";
   }
 }
 
-/* ---------------------------------------------------------
-   LANGUAGE SELECTOR
---------------------------------------------------------- */
-document.getElementById("langSelect").onchange = e => {
-  const ln = e.target.value;
-  localStorage.setItem("lang", ln);
-  document.getElementById("userLanguage").textContent = ln.toUpperCase();
+/* USER DATA */
+const u = tg.initDataUnsafe?.user || {};
+
+document.getElementById("userAvatar").src =
+  u.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+document.getElementById("userName").textContent =
+  [u.first_name, u.last_name].filter(Boolean).join(" ") || "Guest";
+
+if(u.is_premium){
+  const p=document.getElementById("userPremium");
+  p.classList.remove("hidden");
+  p.innerHTML=`💸 Premium`;
+}
+
+document.getElementById("userHandle").textContent =
+  u.username ? "@"+u.username : "—";
+
+document.getElementById("userId").textContent =
+  u.id || "—";
+
+const langMap = {
+  en:"🇬🇧 English", ru:"🇷🇺 Русский", hi:"🇮🇳 हिन्दी",
+  es:"🇪🇸 Español", de:"🇩🇪 Deutsch"
 };
+const code = (u.language_code || "en").split("-")[0];
+document.getElementById("userLanguage").textContent =
+  langMap[code] || code.toUpperCase();
 
-document.getElementById("langSelect").value =
-  localStorage.getItem("lang") || "en";
+/* Lottie */
+lottie.loadAnimation({
+  container: document.getElementById("lottie"),
+  renderer: "svg", loop: true, autoplay: true,
+  path: "https://assets2.lottiefiles.com/packages/lf20_jv4xehxh.json"
+});
 
-/* ---------------------------------------------------------
-   CHAT SYSTEM FIXED
---------------------------------------------------------- */
-const chatArea = document.getElementById("chatArea");
-const chatInput = document.getElementById("chatInput");
-const chatSend = document.getElementById("chatSend");
-
-// user send
-chatSend.onclick = sendMsg;
-chatInput.onkeypress = e => {
-  if (e.key === "Enter") sendMsg();
-};
-
-function sendMsg() {
-  const msg = chatInput.value.trim();
-  if (!msg) return;
-
-  addBubbleUser(msg);
-  chatInput.value = "";
-
-  fetch(`${API_BASE}/chat`, {
-    method: "POST",
-    headers: {"Content-Type":"application/json"},
-    body: JSON.stringify({ msg })
+/* Copy Tooltip */
+document.querySelectorAll(".copyable").forEach(el=>{
+  const span = el.querySelector("span");
+  el.addEventListener("click",()=>{
+    navigator.clipboard.writeText(span.textContent.trim());
+    const tt=document.createElement("div");
+    tt.className="tooltip"; tt.textContent="Copied!";
+    el.appendChild(tt);
+    requestAnimationFrame(()=>tt.style.opacity=1);
+    setTimeout(()=>{
+      tt.style.opacity=0;
+      setTimeout(()=>tt.remove(),200);
+    },1000);
   });
-}
+});
 
-// user bubble
-function addBubbleUser(msg) {
-  const div = document.createElement("div");
-  div.className = "chat-bubble-user";
-  div.textContent = msg;
-  chatArea.appendChild(div);
-  chatArea.scrollTop = chatArea.scrollHeight;
-}
+/* Loader */
+let prog=0;
+const bar=document.getElementById("progressBar");
+const txt=document.getElementById("progressText");
 
-// owner bubble
-function addBubbleOwner(msg) {
-  const div = document.createElement("div");
-  div.className = "chat-bubble-owner";
-  div.textContent = msg;
-  chatArea.appendChild(div);
-  chatArea.scrollTop = chatArea.scrollHeight;
-}
+const interval=setInterval(()=>{
+  prog+=1;
+  bar.style.width=prog+"%";
+  txt.textContent=prog+"%";
 
-let lastOwnerMsg = "";
+  if(prog>=100){
+    clearInterval(interval);
+    document.getElementById("loadingScreen").style.opacity="0";
+    setTimeout(()=>{
+      document.getElementById("loadingScreen").style.display="none";
+      document.querySelector(".container").style.display="block";
+      tg.MainButton.setText("✦ Close Profile ✦")
+        .setParams({has_shine_effect:true})
+        .show()
+        .onClick(()=>tg.close());
+    },300);
+  }
+},18);
 
-// Poll owner replies
-setInterval(async () => {
-  try {
-    const r = await fetch(`${API_BASE}/chat`);
-    const data = await r.json();
+/* Expandable Menu */
+const menuToggle=document.getElementById("menuToggle");
+const menuBody=document.getElementById("menuBody");
 
-    if (data.owner && data.owner !== lastOwnerMsg) {
-      lastOwnerMsg = data.owner;
-      addBubbleOwner(lastOwnerMsg);
-    }
-  } catch {}
-}, 1200);
+menuToggle.addEventListener("click",()=>{
+  const open = menuBody.style.display==="flex";
+  menuBody.style.display = open ? "none" : "flex";
+  menuToggle.classList.toggle("rotated", !open);
+});
