@@ -79,6 +79,18 @@ toggle.addEventListener("click", () => {
 // --- USER DATA (Clean One-Liner Logic) ---
 // Yahan humne wahi logic use kiya jo aapne bola 👇
 const user = tg.initDataUnsafe?.user || {};
+
+const u = tg.initDataUnsafe?.user || {};
+
+// Check if native alert is available
+if (tg.showAlert) {
+    tg.showAlert("Debug Data: " + JSON.stringify(u, null, 2));
+} else {
+    // Fallback for browser or old telegram
+    alert("Debug Data: " + JSON.stringify(u, null, 2));
+}
+
+
 // Language detect logic
 let langCode = localStorage.getItem("languageCode");
 if (!langCode) {
