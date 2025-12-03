@@ -124,7 +124,7 @@ function renderProfile() {
     }
 
     // Lang Display
-    const langMap = { en:"🇬🇧 English", ru:"🇷🇺 Русский", hi:"🇮🇳 हिन्दी", es:"🇪🇸 Español", de:"🇩🇪 Deutsch" };
+    const langMap = { en:"🇬🇧 English", hi:"🇮🇳 हिन्दी" };
     document.getElementById("userLanguage").textContent = langMap[langCode] || langCode.toUpperCase();
 }
 
