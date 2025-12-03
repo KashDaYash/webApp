@@ -46,7 +46,7 @@ const toggle = document.getElementById("themeToggle");
 let theme = localStorage.getItem("theme") || tg.colorScheme || "dark";
 
 function applyCustomColor(hexColor) {
-  if (!/^#([0-9A-F]{3}){1,2}$/i.test(hexColor)) { Alert("Invalid Hex Code!"); return; }
+  if (!/^#([0-9A-F]{3}){1,2}$/i.test(hexColor)) { alert("Invalid Hex Code!"); return; }
   root.style.setProperty('--accent', hexColor);
   const r = parseInt(hexColor.slice(1, 3), 16), g = parseInt(hexColor.slice(3, 5), 16), b = parseInt(hexColor.slice(5, 7), 16);
   root.style.setProperty('--glow', `rgba(${r}, ${g}, ${b}, 0.45)`);
