@@ -3,107 +3,162 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>User Profile</title>
+  <title>profiletele</title>
 
+  <!-- Telegram WebApp JS -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <!-- Lottie -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.10.2/lottie.min.js"></script>
 
-  <link rel="stylesheet" href="profile.css"/>
+  <link rel="stylesheet" href="premium.css"/>
 </head>
 
 <body>
 
-  <!-- Loading Screen -->
+  <!-- LOADING SCREEN -->
   <div id="loadingScreen">
-    <div class="progress-wrapper">
-      <div id="progressBar" class="progress-bar"></div>
+    <div class="loader-glass">
+      <div class="progress-wrapper">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
+      <div id="progressText" class="progress-text">0%</div>
     </div>
-    <div id="progressText" class="progress-text">0%</div>
   </div>
 
-  <!-- Main Container -->
-  <div class="container">
+  <!-- MAIN APP CONTAINER -->
+  <div id="app" class="app-container">
 
-    <!-- NAVIGATION BAR -->
-    <div class="nav">
-      <div class="nav-item active" data-page="home">🏠<span>Home</span></div>
-      <div class="nav-item" data-page="profile">👤<span>Profile</span></div>
-      <div class="nav-item" data-page="stats">📊<span>Stats</span></div>
-      <div class="nav-item" data-page="messages">💬<span>Messages</span></div>
-      <div class="nav-item" data-page="settings">⚙<span>Settings</span></div>
-    </div>
+    <!-- PAGE WRAPPER -->
+    <div id="pages">
 
-    <!-- HOME PAGE -->
-    <section id="home" class="page active">
-      <h2 id="welcomeTitle">Welcome</h2>
-      <div id="homeCoins">Coins: 0</div>
-    </section>
-
-    <!-- PROFILE PAGE -->
-    <section id="profile" class="page">
-      <div class="profile-card">
-        <button id="themeToggle" class="theme-toggle">🌙</button>
-        <div class="profile-header">
-          <div class="avatar-wrapper">
-            <div id="lottie" class="lottie-glow"></div>
-            <img id="userAvatar" class="avatar"
-                src="https://cdn-icons-png.flaticon.com/512/149/149071.png"/>
+      <!-- HOME -->
+      <section id="home" class="page active">
+        <div class="glass-card home-card">
+          <h2 id="welcomeTitle">Welcome</h2>
+          <div class="coins-box">
+            <span>💰 Coins:</span>
+            <strong id="homeCoins">0</strong>
           </div>
+
+          <div class="quick-buttons">
+            <button class="quick-btn" data-open="profile">View Profile</button>
+            <button class="quick-btn" data-open="stats">View Stats</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROFILE -->
+      <section id="profile" class="page">
+        <div class="glass-card profile-card">
+
+          <!-- THEME TOGGLE -->
+          <button id="themeToggle" class="theme-toggle">🌙</button>
+
+          <!-- AVATAR -->
+          <div class="avatar-wrapper">
+            <div id="lottie" class="lottie-bg"></div>
+            <img id="userAvatar" class="avatar"
+            src="https://cdn-icons-png.flaticon.com/512/149/149071.png"/>
+          </div>
+
           <h2 id="userName">Loading…</h2>
-          <span id="userPremium" class="tag premium hidden">💸 Premium</span>
-          <span id="userLanguage" class="tag language"></span>
+
+          <span id="userPremium" class="premium-tag hidden">💎 Premium</span>
+          <span id="userLanguage" class="lang-tag">—</span>
+
+          <div class="info-box">
+            <div class="info-row"><strong>ID</strong> <span id="userId">—</span></div>
+            <div class="info-row"><strong>Username</strong> <span id="userHandle">—</span></div>
+          </div>
+
         </div>
+      </section>
 
-        <div class="profile-body">
-          <div class="info"><strong>ID:</strong> <span id="userId">—</span></div>
-          <div class="info"><strong>Username:</strong> <span id="userHandle">—</span></div>
+      <!-- STATS -->
+      <section id="stats" class="page">
+        <div class="glass-card stats-card">
+          <h2>Stats</h2>
+
+          <div class="stats-item">
+            <div class="stats-title">Coins</div>
+            <div class="stats-value" id="statsCoins">0</div>
+          </div>
+
+          <div class="lottie-box">
+            <div id="statsLottie" class="lottie-space"></div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- MESSAGES -->
+      <section id="messages" class="page">
+        <div class="glass-card chat-card">
+          <h2>Chat with Owner</h2>
+
+          <div id="chatArea" class="chat-area"></div>
+
+          <div class="chat-input-box">
+            <input id="chatInput" placeholder="Type a message..."/>
+            <button id="chatSend">➤</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="settings" class="page">
+        <div class="glass-card settings-card">
+          <h2>Settings</h2>
+
+          <label class="lang-label">Language</label>
+
+          <select id="langSelect" class="glass-select">
+            <option value="en">English</option>
+            <option value="hi">Hindi</option>
+            <option value="es">Spanish</option>
+            <option value="ru">Russian</option>
+            <option value="de">German</option>
+            <option value="fr">French</option>
+            <option value="it">Italian</option>
+            <option value="ar">Arabic</option>
+            <option value="tr">Turkish</option>
+            <option value="pt">Portuguese</option>
+          </select>
+
+        </div>
+      </section>
+
+    </div>
+
+    <!-- CURVED FLOATING NAVBAR -->
+    <div class="nav-wrapper">
+      <div class="nav-glass">
+        <div class="nav-item active" data-page="home">
+          🏠
+          <span>Home</span>
+        </div>
+        <div class="nav-item" data-page="profile">
+          👤
+          <span>Profile</span>
+        </div>
+        <div class="nav-item" data-page="stats">
+          📊
+          <span>Stats</span>
+        </div>
+        <div class="nav-item" data-page="messages">
+          💬
+          <span>Chat</span>
+        </div>
+        <div class="nav-item" data-page="settings">
+          ⚙
+          <span>Settings</span>
         </div>
       </div>
-    </section>
-
-    <!-- STATS PAGE -->
-    <section id="stats" class="page">
-      <h2>Your Stats</h2>
-      <div id="statsContent">Loading…</div>
-    </section>
-
-    <!-- MESSAGES PAGE -->
-    <section id="messages" class="page">
-      <h2>Chat with Owner</h2>
-
-      <div id="chatArea"></div>
-
-      <div class="chatBox">
-        <input id="chatInput" placeholder="Type a message..."/>
-        <button id="chatSend">Send</button>
-      </div>
-
-    </section>
-
-    <!-- SETTINGS PAGE -->
-    <section id="settings" class="page">
-      <h2>Settings</h2>
-
-      <div class="setting">
-        <strong>Language:</strong>
-        <select id="langSelect">
-          <option value="en">English</option>
-          <option value="hi">Hindi</option>
-          <option value="es">Spanish</option>
-          <option value="ru">Russian</option>
-          <option value="de">German</option>
-          <option value="fr">French</option>
-          <option value="it">Italian</option>
-          <option value="ar">Arabic</option>
-          <option value="tr">Turkish</option>
-          <option value="pt">Portuguese</option>
-        </select>
-      </div>
-
-    </section>
+    </div>
 
   </div>
 
-  <script src="profile.js"></script>
+  <script src="premium.js"></script>
 </body>
 </html> 
