@@ -204,7 +204,8 @@ document.querySelectorAll(".copyable").forEach(el=>{
 
 /* --- START: TWA VERIFICATION LOGIC (Step 5) --- */
 const initData = tg.initData; 
-const VERCEL_BASE_URL = "https://your-vercel-deployment-name.vercel.app/api"; // *** CHANGE THIS ***
+const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app";
+
 
 let IS_USER_VERIFIED = false;
 
