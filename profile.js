@@ -1,20 +1,26 @@
 // Command: profile.js
 const tg = window.Telegram.WebApp;
 
-// 1. Initialize
-tg.ready(); 
-tg.expand(); 
+// 1. Initialize immediately
+tg.ready();
+tg.expand();
 tg.enableVerticalSwipes();
 try { tg.requestFullscreen(); } catch(e){}
 
 // Set Colors
-tg.setHeaderColor("#1c1c1c"); 
-tg.setBackgroundColor("#1e1e1e"); 
+tg.setHeaderColor("#1c1c1c");
+tg.setBackgroundColor("#1e1e1e");
 tg.setBottomBarColor("#000000");
 
 // --- CONFIG ---
-// Check karein ki ye URL bilkul sahi ho (https://.../api)
-const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app";
+const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app/api";
+
+// --- STEP 1: USER DATA (SIMPLE WAY) ---
+// Hum wahi tarika use kar rahe hain jo aapke working code me hai
+const u = tg.initDataUnsafe?.user || {};
+
+// Debug ke liye (Baad me hata dena)
+// console.log("User loaded:", u);
 
 // --- LOCALIZATION ---
 const localization = {
@@ -24,8 +30,8 @@ const localization = {
     language: "🌐 Language", theme: "🎨 Theme",
     close: "✦ Close Profile ✦", copied: "Copied!",
     language_question: "Select Language:", language_current: "Language changed to English 🇬🇧",
-    chats_title: "Chats", not_available: "Not Available", user_not_found: "User Not Found",
-    reset_confirm: "Are you sure you want to reset the theme?", reset_success: "Theme Reset!",
+    chats_title: "Chats", not_available: "Not Available", user_not_found: "Guest User",
+    reset_confirm: "Reset theme to default?", reset_success: "Theme Reset!",
     no_chats: "No conversations found.", loading_chats: "Loading chats..."
   },
   hi: {
@@ -34,7 +40,7 @@ const localization = {
     language: "🌐 भाषा", theme: "🎨 थीम",
     close: "✦ प्रोफाइल बंद करें ✦", copied: "कॉपी किया गया!",
     language_question: "भाषा चुनें:", language_current: "भाषा हिंदी में बदल दी गई है 🇮🇳",
-    chats_title: "चैट्स", not_available: "उपलब्ध नहीं", user_not_found: "उपयोगकर्ता नहीं मिला",
+    chats_title: "चैट्स", not_available: "उपलब्ध नहीं", user_not_found: "अतिथि उपयोगकर्ता",
     reset_confirm: "क्या आप थीम रिसेट करना चाहते हैं?", reset_success: "थीम रिसेट हो गई!",
     no_chats: "कोई संदेश नहीं मिला", loading_chats: "चैट लोड हो रही हैं..."
   }
@@ -46,7 +52,7 @@ const toggle = document.getElementById("themeToggle");
 let theme = localStorage.getItem("theme") || tg.colorScheme || "dark";
 
 function applyCustomColor(hexColor) {
-  if (!/^#([0-9A-F]{3}){1,2}$/i.test(hexColor)) { alert("Invalid Hex Code!"); return; }
+  if (!/^#([0-9A-F]{3}){1,2}$/i.test(hexColor)) { tg.showAlert("Invalid Hex Code!"); return; }
   root.style.setProperty('--accent', hexColor);
   const r = parseInt(hexColor.slice(1, 3), 16), g = parseInt(hexColor.slice(3, 5), 16), b = parseInt(hexColor.slice(5, 7), 16);
   root.style.setProperty('--glow', `rgba(${r}, ${g}, ${b}, 0.45)`);
@@ -58,11 +64,11 @@ function applyTheme(name){
   if (customColor) applyCustomColor(customColor);
   else { root.style.removeProperty('--accent'); root.style.removeProperty('--glow'); }
   
-  if(name==="light"){ 
-      root.classList.add("light-theme"); toggle.textContent="☀️"; 
+  if(name==="light"){
+      root.classList.add("light-theme"); toggle.textContent="☀️";
       tg.setHeaderColor("#ffffff"); tg.setBackgroundColor("#f5f5f5");
-  } else { 
-      root.classList.remove("light-theme"); toggle.textContent="🌙"; 
+  } else {
+      root.classList.remove("light-theme"); toggle.textContent="🌙";
       tg.setHeaderColor("#1c1c1c"); tg.setBackgroundColor("#1e1e1e");
   }
 }
@@ -77,34 +83,18 @@ toggle.addEventListener("click", () => {
 });
 
 
-// --- USER DATA (DIRECT ACCESS) ---
-// Hum verification bypass kar rahe hain taaki Network Error na aaye.
-// Hum directly Telegram se data le rahe hain.
-const user = tg.initDataUnsafe?.user || {};
-
-// DEBUG ALERT: Isse aapko dikhega ki data kya aa raha hai (Object ki jagah Text)
-// Jab sab sahi ho jaye, is line ko hata dena.
-if(user.id) {
-    // Data mila
-    alert("User Data:\n" + JSON.stringify(user, null, 2));
-} else {
-    // Data nahi mila
-    alert("No User Data Found (Browser Mode?)");
-}
-
-
+// --- RENDER LOGIC ---
 // Language detect logic
 let langCode = localStorage.getItem("languageCode");
 if (!langCode) {
-    langCode = (user.language_code || "en").split("-")[0];
+    langCode = (u.language_code || "en").split("-")[0];
 }
 if (!localization[langCode]) langCode = "en";
-
 
 function renderProfile() {
     const lang = localization[langCode];
     
-    // Text Updates
+    // 1. Text Updates
     document.title = lang.title;
     document.querySelector('.profile-body .info:nth-child(1) strong').textContent = lang.id;
     document.querySelector('.profile-body .info:nth-child(2) strong').textContent = lang.username;
@@ -118,19 +108,18 @@ function renderProfile() {
     
     document.querySelector('.chat-header h3').textContent = lang.chats_title;
 
-    // Data Filling
-    const realName = [user.first_name, user.last_name].filter(Boolean).join(" ");
+    // 2. Data Filling (Directly using 'u' variable)
+    const realName = [u.first_name, u.last_name].filter(Boolean).join(" ");
     
     document.getElementById("userName").textContent = realName || lang.user_not_found;
-    document.getElementById("userId").textContent = user.id || lang.not_available;
-    document.getElementById("userHandle").textContent = user.username ? "@"+user.username : lang.not_available;
+    document.getElementById("userId").textContent = u.id || lang.not_available;
+    document.getElementById("userHandle").textContent = u.username ? "@"+u.username : lang.not_available;
     
-    // Agar photo hai to lagao, nahi to default
-    document.getElementById("userAvatar").src = user.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+    document.getElementById("userAvatar").src = u.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
     // Premium Check
     const premTag = document.getElementById("userPremium");
-    if(user.is_premium) {
+    if(u.is_premium) {
         premTag.innerHTML = lang.premium;
         premTag.classList.remove("hidden");
     } else {
@@ -142,9 +131,10 @@ function renderProfile() {
     document.getElementById("userLanguage").textContent = langMap[langCode] || langCode.toUpperCase();
 }
 
-renderProfile(); // Initial Render
+// Call Render Immediately
+renderProfile();
 
-// Lottie
+// Lottie Animation
 lottie.loadAnimation({
   container: document.getElementById("lottie"), renderer: "svg", loop: true, autoplay: true,
   path: "https://assets2.lottiefiles.com/packages/lf20_jv4xehxh.json"
@@ -157,7 +147,7 @@ document.querySelectorAll(".copyable").forEach(el=>{
     const text = span.textContent.trim();
     const lang = localization[langCode];
     if (text === lang.not_available || text === "—") {
-         tg.HapticFeedback.notificationOccurred('error'); return; 
+         tg.HapticFeedback.notificationOccurred('error'); return;
     }
     navigator.clipboard.writeText(text);
     const tt=document.createElement("div"); tt.className="tooltip"; tt.textContent=lang.copied;
@@ -167,22 +157,21 @@ document.querySelectorAll(".copyable").forEach(el=>{
   });
 });
 
-// --- LOADER (NO NETWORK CHECK) ---
-// Ye loader ab kisi ka intezaar nahi karega, bas chalega aur app khol dega.
+// --- LOADER ---
 function startLoader() {
     let prog = 0;
     const bar = document.getElementById("progressBar");
     const txt = document.getElementById("progressText");
     const interval = setInterval(()=>{
-        prog += 2; 
+        prog += 2;
         bar.style.width = prog + "%"; txt.textContent = prog + "%";
         if(prog >= 100){
             clearInterval(interval);
             document.getElementById("loadingScreen").style.opacity="0";
             setTimeout(()=>{
                 document.getElementById("loadingScreen").style.display="none";
-                document.getElementById("mainContainer").style.display="flex"; 
-                document.querySelector(".container").style.display="flex"; 
+                document.getElementById("mainContainer").style.display="flex";
+                document.querySelector(".container").style.display="flex";
                 const lang = localization[langCode];
                 tg.MainButton.setText(lang.close).setParams({has_shine_effect:true}).show().onClick(()=>tg.close());
             },300);
@@ -216,10 +205,10 @@ function handleMenuItemClick(event) {
     if (itemText.includes(lang.language)) {
         tg.showPopup({
             title: lang.language_question, message: "Select Interface Language:",
-            buttons: [ 
-                { id: 'en', text: '🇬🇧 English', type: 'default' }, 
-                { id: 'hi', text: '🇮🇳 हिन्दी', type: 'default' }, 
-                { id: 'cancel', text: 'Cancel', type: 'cancel' } 
+            buttons: [
+                { id: 'en', text: '🇬🇧 English', type: 'default' },
+                { id: 'hi', text: '🇮🇳 हिन्दी', type: 'default' },
+                { id: 'cancel', text: 'Cancel', type: 'cancel' }
             ]
         }, (btnId) => {
             if (btnId === 'en' || btnId === 'hi') {
@@ -229,13 +218,13 @@ function handleMenuItemClick(event) {
                 tg.showAlert(localization[langCode].language_current);
             }
         });
-    } 
+    }
     else if (itemText.includes(lang.theme)) {
         const initialColor = localStorage.getItem("customAccentColor") || "#839ef0";
         colorInput.value = initialColor; hexDisplay.value = initialColor.toUpperCase();
         colorOverlay.classList.remove("hidden");
     }
-    else if (itemText.includes(lang.messages)) { 
+    else if (itemText.includes(lang.messages)) {
         showChatInterface();
     }
     else if (itemText.includes(lang.settings)) {
@@ -251,14 +240,14 @@ const chatSearchInput = document.getElementById("chatSearchInput");
 
 function showChatInterface() {
     chatContainer.classList.remove("hidden");
-    document.getElementById("mainContainer").classList.add("hidden"); 
-    tg.BackButton.show(); 
-    fetchChats(); 
+    document.getElementById("mainContainer").classList.add("hidden");
+    tg.BackButton.show();
+    fetchChats();
 }
 
 function hideChatInterface() {
     chatContainer.classList.add("hidden");
-    document.getElementById("mainContainer").classList.remove("hidden"); 
+    document.getElementById("mainContainer").classList.remove("hidden");
     tg.BackButton.hide();
 }
 
@@ -270,14 +259,11 @@ async function fetchChats() {
     chatList.innerHTML = `<div class="loading-chats">${lang.loading_chats}</div>`;
 
     try {
-        // Agar user ID nahi hai (guest), to 0 bhejo
-        const userId = user.id || 0;
-        
-        // Backend call (Agar ye fail hua to catch block chalega, app crash nahi karega)
+        const userId = u.id || 0; // Directly using 'u'
         const res = await fetch(`${VERCEL_BASE_URL}/get-chats?user_id=${userId}`);
         const data = await res.json();
 
-        chatList.innerHTML = ''; 
+        chatList.innerHTML = '';
 
         if (data.success && data.data.length > 0) {
             renderChatList(data.data);
@@ -285,7 +271,6 @@ async function fetchChats() {
             showNoChatsMessage();
         }
     } catch (e) {
-        // Agar backend connect nahi hua, to bas empty list dikhao. Error popup nahi.
         showNoChatsMessage();
     }
 }
@@ -294,7 +279,7 @@ function renderChatList(chats) {
     chats.forEach(chat => {
         const el = document.createElement("div");
         el.className = "chat-item";
-        el.setAttribute("data-name", chat.participant_name.toLowerCase()); 
+        el.setAttribute("data-name", chat.participant_name.toLowerCase());
         el.innerHTML = `
             <img src="${chat.avatar}" class="chat-avatar">
             <div class="chat-info">
@@ -323,16 +308,9 @@ function showNoChatsMessage() {
 chatSearchInput.addEventListener("input", (e) => {
     const term = e.target.value.toLowerCase();
     const items = document.querySelectorAll(".chat-item");
-    let visibleCount = 0;
-    
     items.forEach(item => {
         const name = item.getAttribute("data-name");
-        if (name.includes(term)) {
-            item.style.display = "flex";
-            visibleCount++;
-        } else {
-            item.style.display = "none";
-        }
+        item.style.display = name.includes(term) ? "flex" : "none";
     });
 });
 
@@ -350,20 +328,19 @@ hexDisplay.addEventListener('input', () => { if (/^#([0-9A-F]{3}){1,2}$/i.test(h
 
 function hideColorPicker() { colorOverlay.classList.add("hidden"); }
 
-setColorBtn.addEventListener("click", () => { 
-    applyCustomColor(colorInput.value); 
-    hideColorPicker(); 
+setColorBtn.addEventListener("click", () => {
+    applyCustomColor(colorInput.value);
+    hideColorPicker();
 });
 
-// Reset Logic Fixed
-resetColorBtn.addEventListener("click", () => { 
+resetColorBtn.addEventListener("click", () => {
     const lang = localization[langCode];
     tg.showConfirm(lang.reset_confirm, (confirmed) => {
         if (confirmed) {
-            localStorage.removeItem("customAccentColor"); 
-            applyTheme(theme); 
-            tg.showAlert(lang.reset_success); 
-            hideColorPicker(); 
+            localStorage.removeItem("customAccentColor");
+            applyTheme(theme);
+            tg.showAlert(lang.reset_success);
+            hideColorPicker();
         }
     });
 });
