@@ -6,8 +6,13 @@ tg.ready();
 tg.expand();
 tg.enableVerticalSwipes();
 
-// Needed for inline buttons → request real user data
+// Inline button → sendData fix
 tg.sendData("request_user");
+
+/* ---------------------------------------------------------
+   API BASE URL (FIXED)
+--------------------------------------------------------- */
+const API_BASE = "https://profiletele.vercel.app/api";
 
 /* ---------------------------------------------------------
    LOADING SCREEN
@@ -40,16 +45,18 @@ let currentUser = {};
 
 async function fetchUser() {
   try {
-    const r = await fetch("/api/user");
+    const r = await fetch(`${API_BASE}/user`);
     currentUser = await r.json();
 
     if (!currentUser.id) return;
 
-    // Profile data
+    // PROFILE FIELDS
     document.getElementById("userId").textContent = currentUser.id;
-    document.getElementById("userHandle").textContent =
-      currentUser.username ? "@" + currentUser.username : "—";
 
+    document.getElementById("userHandle").textContent =
+      currentUser.username ? "@" + currentUser.username : "—";  // FIXED
+
+    // Full name
     const fullName =
       (currentUser.first_name || "") +
       " " +
@@ -57,25 +64,25 @@ async function fetchUser() {
     document.getElementById("userName").textContent =
       fullName.trim() || "User";
 
-    // avatar
+    // Avatar
     if (currentUser.photo_url) {
       document.getElementById("userAvatar").src = currentUser.photo_url;
     }
 
-    // premium badge
+    // Premium badge
     if (currentUser.is_premium) {
       document.getElementById("userPremium").classList.remove("hidden");
     }
 
-    // language
+    // Language
     document.getElementById("userLanguage").textContent =
       (currentUser.language_code || "EN").toUpperCase();
 
-    // Welcome text
+    // Welcome title
     document.getElementById("welcomeTitle").textContent =
       "Welcome " + (currentUser.first_name || "");
 
-    // Coins
+    // Coins (Home + Stats)
     const coins = currentUser.coins ?? 0;
     document.getElementById("homeCoins").textContent = coins;
     document.getElementById("statsCoins").textContent = coins;
@@ -84,12 +91,12 @@ async function fetchUser() {
     console.warn("User fetch error:", err);
   }
 }
+
 setInterval(fetchUser, 700);
 
 /* ---------------------------------------------------------
    LOTTIE ANIMATIONS
 --------------------------------------------------------- */
-
 setTimeout(() => {
   try {
     // Avatar glow
@@ -113,7 +120,7 @@ setTimeout(() => {
 }, 700);
 
 /* ---------------------------------------------------------
-   SPA NAVIGATION
+   SPA NAVIGATION (FIXED)
 --------------------------------------------------------- */
 const navItems = document.querySelectorAll(".nav-item");
 const pages = document.querySelectorAll(".page");
@@ -128,24 +135,24 @@ function openPage(id) {
     .classList.add("active");
 }
 
+// Navbar click
 navItems.forEach(btn => {
   btn.addEventListener("click", () => openPage(btn.dataset.page));
 });
 
-// Quick buttons on home page
+// FIX: Home "View Profile" button
 document.querySelectorAll("[data-open]").forEach(btn => {
   btn.onclick = () => openPage(btn.dataset.open);
 });
 
 /* ---------------------------------------------------------
-   THEME SYSTEM (Light / Dark)
+   THEME SYSTEM (LIGHT / DARK)
 --------------------------------------------------------- */
 const themeToggle = document.getElementById("themeToggle");
 const themeSelect = document.getElementById("themeSelect");
 
 let theme = localStorage.getItem("theme") || "dark";
 applyTheme(theme);
-
 themeSelect.value = theme;
 
 // profile toggle button
@@ -186,31 +193,33 @@ document.getElementById("langSelect").value =
   localStorage.getItem("lang") || "en";
 
 /* ---------------------------------------------------------
-   CHAT SYSTEM (WebApp ↔ Bot)
+   CHAT SYSTEM FIXED
 --------------------------------------------------------- */
 const chatArea = document.getElementById("chatArea");
 const chatInput = document.getElementById("chatInput");
 const chatSend = document.getElementById("chatSend");
 
+// user send
 chatSend.onclick = sendMsg;
 chatInput.onkeypress = e => {
   if (e.key === "Enter") sendMsg();
 };
 
 function sendMsg() {
-  const text = chatInput.value.trim();
-  if (!text) return;
+  const msg = chatInput.value.trim();
+  if (!msg) return;
 
-  addBubbleUser(text);
+  addBubbleUser(msg);
   chatInput.value = "";
 
-  fetch("/api/chat", {
+  fetch(`${API_BASE}/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ msg: text })
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ msg })
   });
 }
 
+// user bubble
 function addBubbleUser(msg) {
   const div = document.createElement("div");
   div.className = "chat-bubble-user";
@@ -219,6 +228,7 @@ function addBubbleUser(msg) {
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
+// owner bubble
 function addBubbleOwner(msg) {
   const div = document.createElement("div");
   div.className = "chat-bubble-owner";
@@ -229,10 +239,10 @@ function addBubbleOwner(msg) {
 
 let lastOwnerMsg = "";
 
-// Poll for owner reply
+// Poll owner replies
 setInterval(async () => {
   try {
-    const r = await fetch("/api/chat");
+    const r = await fetch(`${API_BASE}/chat`);
     const data = await r.json();
 
     if (data.owner && data.owner !== lastOwnerMsg) {
@@ -240,4 +250,4 @@ setInterval(async () => {
       addBubbleOwner(lastOwnerMsg);
     }
   } catch {}
-}, 1200); 
+}, 1200);
