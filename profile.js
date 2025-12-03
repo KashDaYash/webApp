@@ -79,7 +79,7 @@ toggle.addEventListener("click", () => {
 // --- USER DATA (Clean One-Liner Logic) ---
 // Yahan humne wahi logic use kiya jo aapne bola 👇
 const user = tg.initDataUnsafe?.user || {};
-console.log(user);
+tg.showAlert("User Data: " + JSON.stringify(user, null, 2));
 // Language detect logic
 let langCode = localStorage.getItem("languageCode");
 if (!langCode) {
