@@ -1,74 +1,73 @@
-<!-- Command: profile.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Your Profile</title>
-
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
+  <title>WebApp</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.10.2/lottie.min.js"></script>
-
   <link rel="stylesheet" href="profile.css"/>
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 </head>
-
 <body>
 
-  <!-- Loading Screen -->
-  <div id="loadingScreen">
-    <div class="progress-wrapper">
-      <div id="progressBar" class="progress-bar"></div>
+  <div id="view-profile" class="view active">
+    <div class="container" style="display:block;">
+      <div class="profile-card">
+        <button id="themeEditBtn" class="theme-toggle">🎨</button>
+        <div class="avatar-wrapper">
+          <img id="userAvatar" class="avatar" src=""/>
+        </div>
+        <h2 id="userName">Loading...</h2>
+        <div class="profile-body">
+          <button id="openChatBtn" class="action-btn">💬 Open Chats</button>
+        </div>
+      </div>
     </div>
-    <div id="progressText" class="progress-text">0%</div>
   </div>
 
-  <!-- Profile Container -->
-  <div class="container">
-
-    <!-- Profile Card -->
-    <div class="profile-card">
-
-      <button id="themeToggle" class="theme-toggle">🌙</button>
-
-      <div class="profile-header">
-        <div class="avatar-wrapper">
-          <div id="lottie" class="lottie-glow"></div>
-          <img id="userAvatar" class="avatar"
-            src="https://cdn-icons-png.flaticon.com/512/149/149071.png"/>
-        </div>
-
-        <h2 id="userName">Guest</h2>
-
-        <span id="userPremium" class="tag premium hidden"></span>
-
-        <span id="userLanguage" class="tag language"></span>
-      </div>
-
-      <div class="profile-body">
-        <div class="info copyable"><strong>ID:</strong> <span id="userId">—</span></div>
-        <div class="info copyable"><strong>Username:</strong> <span id="userHandle">—</span></div>
-      </div>
-
-    </div>
-
-    <!-- Expandable Menu -->
-    <div class="menu-card">
-      <div class="menu-header">
-        <h3>Options</h3>
-        <button id="menuToggle" class="menu-toggle">▼</button>
-      </div>
-
-      <div id="menuBody" class="menu-body">
-        <div class="menu-item">⚙ Settings</div>
-        <div class="menu-item">📩 Messages</div>
-        <div class="menu-item">🌐 Language</div>
-        <div class="menu-item">💱 Subscription</div>
-        <div class="menu-item">🎨 Theme Customizer</div>
+  <div id="view-chatlist" class="view">
+    <div class="chat-header">
+      <h2>Chats</h2>
+      <div class="search-box">
+        <span class="material-icons-round">search</span>
+        <input type="text" id="userSearch" placeholder="Search username...">
       </div>
     </div>
+    
+    <div id="searchResults" class="user-list hidden"></div>
+    <div id="recentChats" class="user-list">
+      </div>
+    
+    <button class="back-btn" onclick="switchView('view-profile')">Back</button>
+  </div>
 
+  <div id="view-chatroom" class="view">
+    <div class="chat-top-bar">
+      <button onclick="switchView('view-chatlist')" class="icon-btn">←</button>
+      <span id="chatPartnerName">User</span>
+    </div>
+    <div id="messageArea" class="message-area"></div>
+    <div class="input-area">
+      <input type="text" id="msgInput" placeholder="Message..."/>
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <div id="view-theme" class="view">
+    <div class="theme-card">
+      <h3>Theme Customizer</h3>
+      <label>Accent Color</label>
+      <input type="color" id="accentPicker" value="#839ef0">
+      
+      <label>Background Color</label>
+      <input type="color" id="bgPicker" value="#1e1e1e">
+      
+      <button class="action-btn" onclick="resetTheme()">Reset Default</button>
+      <button class="back-btn" onclick="switchView('view-profile')">Close</button>
+    </div>
   </div>
 
   <script src="profile.js"></script>
 </body>
-</html> 
+</html>
+ 
