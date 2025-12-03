@@ -2,121 +2,150 @@
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
-tg.enableVerticalSwipes();
 
-try { tg.requestFullscreen(); } catch(e){}
+// DOM Elements
+const views = {
+  profile: document.getElementById('view-profile'),
+  chatlist: document.getElementById('view-chatlist'),
+  chatroom: document.getElementById('view-chatroom'),
+  theme: document.getElementById('view-theme')
+};
 
-tg.setHeaderColor("#1c1c1c");
-tg.setBackgroundColor("#1e1e1e");
-tg.setBottomBarColor("#000000");
+let currentUser = tg.initDataUnsafe?.user || { id: 12345, first_name: "Test", username: "tester" }; // Fallback for dev
+let currentChatPartner = null;
 
-/* Theme */
-const root = document.documentElement;
-const toggle = document.getElementById("themeToggle");
-let theme = localStorage.getItem("theme") || tg.colorScheme || "dark";
+// --- 1. Initialization & DB Sync ---
+async function init() {
+  // Sync user with MongoDB
+  try {
+    await fetch('/api/syncUser', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tg_id: currentUser.id,
+        username: currentUser.username,
+        first_name: currentUser.first_name,
+        photo_url: currentUser.photo_url
+      })
+    });
+  } catch(e) { console.error("Sync Failed", e); }
+  
+  // UI Setup
+  document.getElementById("userName").textContent = currentUser.first_name;
+  document.getElementById("userAvatar").src = currentUser.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+  loadTheme();
+}
 
-applyTheme(theme);
+// --- 2. Navigation ---
+window.switchView = (viewName) => {
+  Object.values(views).forEach(el => el.classList.remove('active'));
+  views[viewName.replace('view-', '')].classList.add('active');
+  
+  if (viewName === 'view-profile') tg.BackButton.hide();
+  else {
+    tg.BackButton.show();
+    tg.BackButton.onClick(() => switchView('view-profile'));
+  }
+};
 
-toggle.addEventListener("click", () => {
-  theme = theme === "dark" ? "light" : "dark";
-  localStorage.setItem("theme", theme);
-  toggle.classList.add("animate");
-  toggle.addEventListener("animationend",()=>toggle.classList.remove("animate"),{once:true});
-  applyTheme(theme);
+document.getElementById('openChatBtn').addEventListener('click', () => switchView('view-chatlist'));
+document.getElementById('themeEditBtn').addEventListener('click', () => switchView('view-theme'));
+
+// --- 3. Chat System ---
+
+// Search Users
+const searchInput = document.getElementById('userSearch');
+searchInput.addEventListener('input', async (e) => {
+  const query = e.target.value;
+  if (query.length < 3) return;
+  
+  const res = await fetch(`/api/search?query=${query}`);
+  const users = await res.json();
+  
+  const list = document.getElementById('searchResults');
+  list.classList.remove('hidden');
+  list.innerHTML = users.map(u => `
+    <div class="user-item" onclick="openChat(${u.tg_id}, '${u.first_name}')">
+      <img src="${u.photo_url || 'https://placehold.co/50'}">
+      <div><b>${u.first_name}</b><br><small>@${u.username}</small></div>
+    </div>
+  `).join('');
 });
 
-function applyTheme(name){
-  if(name==="light"){
-    root.classList.add("light-theme");
-    toggle.textContent="☀️";
-  } else {
-    root.classList.remove("light-theme");
-    toggle.textContent="🌙";
+// Open Chat Room
+window.openChat = async (partnerId, partnerName) => {
+  currentChatPartner = partnerId;
+  document.getElementById('chatPartnerName').textContent = partnerName;
+  switchView('view-chatroom');
+  loadMessages();
+  // Start polling for new messages
+  if(window.chatInterval) clearInterval(window.chatInterval);
+  window.chatInterval = setInterval(loadMessages, 3000);
+};
+
+// Load Messages
+async function loadMessages() {
+  if(!currentChatPartner) return;
+  const res = await fetch(`/api/chat?u1=${currentUser.id}&u2=${currentChatPartner}`);
+  const msgs = await res.json();
+  
+  const area = document.getElementById('messageArea');
+  area.innerHTML = msgs.map(m => `
+    <div class="msg ${m.sender_id === currentUser.id ? 'out' : 'in'}">
+      ${m.text}
+    </div>
+  `).join('');
+  area.scrollTop = area.scrollHeight; // Scroll to bottom
+}
+
+// Send Message
+document.getElementById('sendBtn').addEventListener('click', async () => {
+  const txt = document.getElementById('msgInput');
+  if (!txt.value) return;
+  
+  await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sender_id: currentUser.id,
+      receiver_id: currentChatPartner,
+      text: txt.value
+    })
+  });
+  
+  txt.value = "";
+  loadMessages();
+});
+
+// --- 4. Theme Editor ---
+const accentPicker = document.getElementById('accentPicker');
+const bgPicker = document.getElementById('bgPicker');
+const root = document.documentElement;
+
+function loadTheme() {
+  const t = JSON.parse(localStorage.getItem('customTheme'));
+  if(t) {
+    root.style.setProperty('--accent', t.accent);
+    root.style.setProperty('--bg', t.bg);
+    accentPicker.value = t.accent;
+    bgPicker.value = t.bg;
   }
 }
 
-/* USER DATA */
-const u = tg.initDataUnsafe?.user || {};
-
-document.getElementById("userAvatar").src =
-  u.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-
-document.getElementById("userName").textContent =
-  [u.first_name, u.last_name].filter(Boolean).join(" ") || "Guest";
-
-if(u.is_premium){
-  const p=document.getElementById("userPremium");
-  p.classList.remove("hidden");
-  p.innerHTML=`💸 Premium`;
-}
-
-document.getElementById("userHandle").textContent =
-  u.username ? "@"+u.username : "—";
-
-document.getElementById("userId").textContent =
-  u.id || "—";
-
-const langMap = {
-  en:"🇬🇧 English", ru:"🇷🇺 Русский", hi:"🇮🇳 हिन्दी",
-  es:"🇪🇸 Español", de:"🇩🇪 Deutsch"
-};
-const code = (u.language_code || "en").split("-")[0];
-document.getElementById("userLanguage").textContent =
-  langMap[code] || code.toUpperCase();
-
-/* Lottie */
-lottie.loadAnimation({
-  container: document.getElementById("lottie"),
-  renderer: "svg", loop: true, autoplay: true,
-  path: "https://assets2.lottiefiles.com/packages/lf20_jv4xehxh.json"
-});
-
-/* Copy Tooltip */
-document.querySelectorAll(".copyable").forEach(el=>{
-  const span = el.querySelector("span");
-  el.addEventListener("click",()=>{
-    navigator.clipboard.writeText(span.textContent.trim());
-    const tt=document.createElement("div");
-    tt.className="tooltip"; tt.textContent="Copied!";
-    el.appendChild(tt);
-    requestAnimationFrame(()=>tt.style.opacity=1);
-    setTimeout(()=>{
-      tt.style.opacity=0;
-      setTimeout(()=>tt.remove(),200);
-    },1000);
+[accentPicker, bgPicker].forEach(p => {
+  p.addEventListener('input', () => {
+    const themeData = { accent: accentPicker.value, bg: bgPicker.value };
+    root.style.setProperty('--accent', themeData.accent);
+    root.style.setProperty('--bg', themeData.bg);
+    localStorage.setItem('customTheme', JSON.stringify(themeData));
   });
 });
 
-/* Loader */
-let prog=0;
-const bar=document.getElementById("progressBar");
-const txt=document.getElementById("progressText");
+window.resetTheme = () => {
+  localStorage.removeItem('customTheme');
+  location.reload();
+}
 
-const interval=setInterval(()=>{
-  prog+=1;
-  bar.style.width=prog+"%";
-  txt.textContent=prog+"%";
-
-  if(prog>=100){
-    clearInterval(interval);
-    document.getElementById("loadingScreen").style.opacity="0";
-    setTimeout(()=>{
-      document.getElementById("loadingScreen").style.display="none";
-      document.querySelector(".container").style.display="block";
-      tg.MainButton.setText("✦ Close Profile ✦")
-        .setParams({has_shine_effect:true})
-        .show()
-        .onClick(()=>tg.close());
-    },300);
-  }
-},18);
-
-/* Expandable Menu */
-const menuToggle=document.getElementById("menuToggle");
-const menuBody=document.getElementById("menuBody");
-
-menuToggle.addEventListener("click",()=>{
-  const open = menuBody.style.display==="flex";
-  menuBody.style.display = open ? "none" : "flex";
-  menuToggle.classList.toggle("rotated", !open);
-});
+// Start
+init();
+ 
