@@ -13,7 +13,7 @@ tg.setBackgroundColor("#1e1e1e");
 tg.setBottomBarColor("#000000");
 
 // --- CONFIG ---
-const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app/api";
+const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app";
 
 // --- LOCALIZATION ---
 const localization = {
