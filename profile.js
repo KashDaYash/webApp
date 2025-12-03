@@ -6,7 +6,7 @@ try { tg.requestFullscreen(); } catch(e){}
 tg.setHeaderColor("#1c1c1c"); tg.setBackgroundColor("#1e1e1e"); tg.setBottomBarColor("#000000");
 
 // --- CONFIG ---
-const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app"; // Ensure this matches your Vercel URL
+const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app/api"; // Ensure this matches your Vercel URL
 
 // --- LOCALIZATION ---
 const localization = {
