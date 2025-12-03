@@ -1,226 +1,217 @@
 /* ---------------------------------------------------------
-   TELEGRAM WEBAPP INITIAL SETUP
+   TELEGRAM INITIAL SETUP
 --------------------------------------------------------- */
-
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 tg.enableVerticalSwipes();
 
-/* Inline button fix → ask bot for real user */
+// Needed for inline buttons → request real user data
 tg.sendData("request_user");
 
 /* ---------------------------------------------------------
-   LOADING SCREEN ANIMATION
+   LOADING SCREEN
 --------------------------------------------------------- */
-
 let prog = 0;
-let bar = document.getElementById("progressBar");
-let txt = document.getElementById("progressText");
+const bar = document.getElementById("progressBar");
+const txt = document.getElementById("progressText");
 
-let loadInt = setInterval(() => {
+let loadInterval = setInterval(() => {
   prog += 1;
   bar.style.width = prog + "%";
   txt.textContent = prog + "%";
 
   if (prog >= 100) {
-    clearInterval(loadInt);
+    clearInterval(loadInterval);
     setTimeout(() => {
       document.getElementById("loadingScreen").style.opacity = "0";
       setTimeout(() => {
         document.getElementById("loadingScreen").style.display = "none";
-        document.getElementById("app").style.opacity = "1";
+        document.getElementById("app").classList.remove("hidden");
       }, 400);
-    }, 300);
+    }, 200);
   }
 }, 18);
 
 /* ---------------------------------------------------------
-   FETCH REAL USER DATA FROM BOT → VIA /api/user
+   USER DATA FETCH LOOP
 --------------------------------------------------------- */
-
 let currentUser = {};
 
 async function fetchUser() {
   try {
-    const res = await fetch("/api/user");
-    const u = await res.json();
+    const r = await fetch("/api/user");
+    currentUser = await r.json();
 
-    if (!u || !u.id) return; // still loading
+    if (!currentUser.id) return;
 
-    currentUser = u;
-
-    // update profile
-    document.getElementById("userId").textContent = u.id;
+    // Profile data
+    document.getElementById("userId").textContent = currentUser.id;
     document.getElementById("userHandle").textContent =
-      u.username ? "@" + u.username : "—";
+      currentUser.username ? "@" + currentUser.username : "—";
 
+    const fullName =
+      (currentUser.first_name || "") +
+      " " +
+      (currentUser.last_name || "");
     document.getElementById("userName").textContent =
-      (u.first_name || "") + " " + (u.last_name || "");
+      fullName.trim() || "User";
 
     // avatar
-    if (u.photo_url) {
-      document.getElementById("userAvatar").src = u.photo_url;
+    if (currentUser.photo_url) {
+      document.getElementById("userAvatar").src = currentUser.photo_url;
     }
 
-    // premium
-    if (u.is_premium) {
+    // premium badge
+    if (currentUser.is_premium) {
       document.getElementById("userPremium").classList.remove("hidden");
     }
 
     // language
     document.getElementById("userLanguage").textContent =
-      (u.language_code || "EN").toUpperCase();
+      (currentUser.language_code || "EN").toUpperCase();
 
-    // welcome name
+    // Welcome text
     document.getElementById("welcomeTitle").textContent =
-      "Welcome " + (u.first_name || "User");
+      "Welcome " + (currentUser.first_name || "");
 
-    // coins (dynamic)
-    document.getElementById("homeCoins").textContent =
-      "Coins: " + (u.coins ?? 0);
-    document.getElementById("statsCoins").textContent =
-      u.coins ?? 0;
+    // Coins
+    const coins = currentUser.coins ?? 0;
+    document.getElementById("homeCoins").textContent = coins;
+    document.getElementById("statsCoins").textContent = coins;
 
-  } catch (e) {
-    console.warn("User fetch error", e);
+  } catch (err) {
+    console.warn("User fetch error:", err);
   }
 }
-
-// keep checking every 700ms (inline safe)
 setInterval(fetchUser, 700);
 
 /* ---------------------------------------------------------
-   LOTTIE SETUP (Profile Avatar Glow + Stats Animation)
+   LOTTIE ANIMATIONS
 --------------------------------------------------------- */
 
 setTimeout(() => {
   try {
+    // Avatar glow
     lottie.loadAnimation({
-      container: document.getElementById("lottie"),
+      container: document.getElementById("avatarGlow"),
       renderer: "svg",
       loop: true,
       autoplay: true,
-      path: "https://lottie.host/2f73f588-1d2c-4b19-bc69-e7c43ee1f625/KVzBpsp6jf.json"
+      path: "https://lottie.host/6e4c90cb-8f89-4bbf-8dc6-dc016fcfe948/zx2Vzzb7eU.json"
     });
 
+    // Stats animation
     lottie.loadAnimation({
       container: document.getElementById("statsLottie"),
       renderer: "svg",
       loop: true,
       autoplay: true,
-      path: "https://lottie.host/b9e7025e-3f2b-4327-9c53-5fc1f76803ea/mCqk4jGz5D.json"
+      path: "https://lottie.host/9e2f0f12-5fb5-4b65-af49-77b7d19c6582/SmmY6gPRif.json"
     });
-  } catch (e) {}
-}, 800);
+  } catch {}
+}, 700);
 
 /* ---------------------------------------------------------
-   SPA PAGE ROUTER
+   SPA NAVIGATION
 --------------------------------------------------------- */
-
 const navItems = document.querySelectorAll(".nav-item");
 const pages = document.querySelectorAll(".page");
 
-function openPage(pg) {
-  // remove active highlight
-  navItems.forEach(n => n.classList.remove("active"));
-  // add to current
-  document.querySelector(`.nav-item[data-page="${pg}"]`)
-    .classList.add("active");
-
-  // animate pages
+function openPage(id) {
   pages.forEach(p => p.classList.remove("active"));
-  document.getElementById(pg).classList.add("active");
+  document.getElementById(id).classList.add("active");
+
+  navItems.forEach(n => n.classList.remove("active"));
+  document
+    .querySelector(`.nav-item[data-page="${id}"]`)
+    .classList.add("active");
 }
 
-// click listener
 navItems.forEach(btn => {
-  btn.addEventListener("click", () => {
-    openPage(btn.dataset.page);
-  });
+  btn.addEventListener("click", () => openPage(btn.dataset.page));
 });
 
-// quick buttons from home
+// Quick buttons on home page
 document.querySelectorAll("[data-open]").forEach(btn => {
-  btn.onclick = () => {
-    openPage(btn.dataset.open);
-  };
+  btn.onclick = () => openPage(btn.dataset.open);
 });
 
 /* ---------------------------------------------------------
-   THEME TOGGLE (Glass + Neon)
+   THEME SYSTEM (Light / Dark)
 --------------------------------------------------------- */
+const themeToggle = document.getElementById("themeToggle");
+const themeSelect = document.getElementById("themeSelect");
 
-const themeBtn = document.getElementById("themeToggle");
 let theme = localStorage.getItem("theme") || "dark";
+applyTheme(theme);
 
-setTheme(theme);
+themeSelect.value = theme;
 
-themeBtn.onclick = () => {
+// profile toggle button
+themeToggle.onclick = () => {
   theme = theme === "dark" ? "light" : "dark";
   localStorage.setItem("theme", theme);
-  setTheme(theme);
+  themeSelect.value = theme;
+  applyTheme(theme);
 };
 
-function setTheme(th) {
-  if (th === "light") {
-    document.documentElement.classList.add("light");
-    themeBtn.textContent = "☀️";
+// settings dropdown
+themeSelect.onchange = e => {
+  theme = e.target.value;
+  localStorage.setItem("theme", theme);
+  applyTheme(theme);
+};
+
+function applyTheme(name) {
+  if (name === "light") {
+    document.documentElement.classList.remove("dark");
+    themeToggle.textContent = "🌙";
   } else {
-    document.documentElement.classList.remove("light");
-    themeBtn.textContent = "🌙";
+    document.documentElement.classList.add("dark");
+    themeToggle.textContent = "☀️";
   }
 }
 
 /* ---------------------------------------------------------
    LANGUAGE SELECTOR
 --------------------------------------------------------- */
-
 document.getElementById("langSelect").onchange = e => {
   const ln = e.target.value;
   localStorage.setItem("lang", ln);
   document.getElementById("userLanguage").textContent = ln.toUpperCase();
 };
 
-// auto-select English if not set
-if (!localStorage.getItem("lang")) {
-  localStorage.setItem("lang", "en");
-}
 document.getElementById("langSelect").value =
-  localStorage.getItem("lang");
+  localStorage.getItem("lang") || "en";
 
 /* ---------------------------------------------------------
-   CHAT WITH OWNER (WebApp → /api/chat → bot)
+   CHAT SYSTEM (WebApp ↔ Bot)
 --------------------------------------------------------- */
-
 const chatArea = document.getElementById("chatArea");
 const chatInput = document.getElementById("chatInput");
 const chatSend = document.getElementById("chatSend");
 
-// send message
 chatSend.onclick = sendMsg;
 chatInput.onkeypress = e => {
   if (e.key === "Enter") sendMsg();
 };
 
 function sendMsg() {
-  let text = chatInput.value.trim();
+  const text = chatInput.value.trim();
   if (!text) return;
 
-  // print bubble
-  addUserBubble(text);
+  addBubbleUser(text);
   chatInput.value = "";
 
-  // send to API
   fetch("/api/chat", {
     method: "POST",
-    headers: {"Content-Type":"application/json"},
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ msg: text })
   });
 }
 
-// add user bubble
-function addUserBubble(msg) {
+function addBubbleUser(msg) {
   const div = document.createElement("div");
   div.className = "chat-bubble-user";
   div.textContent = msg;
@@ -228,8 +219,7 @@ function addUserBubble(msg) {
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-// add owner bubble
-function addOwnerBubble(msg) {
+function addBubbleOwner(msg) {
   const div = document.createElement("div");
   div.className = "chat-bubble-owner";
   div.textContent = msg;
@@ -237,17 +227,17 @@ function addOwnerBubble(msg) {
   chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-/* Poll for owner replies */
+let lastOwnerMsg = "";
+
+// Poll for owner reply
 setInterval(async () => {
   try {
-    const res = await fetch("/api/chat");
-    const data = await res.json();
+    const r = await fetch("/api/chat");
+    const data = await r.json();
 
-    if (data && data.msg && data.msg !== lastOwnerMsg) {
-      lastOwnerMsg = data.msg;
-      addOwnerBubble(data.msg);
+    if (data.owner && data.owner !== lastOwnerMsg) {
+      lastOwnerMsg = data.owner;
+      addBubbleOwner(lastOwnerMsg);
     }
   } catch {}
-}, 1200);
-
-let lastOwnerMsg = "";
+}, 1200); 
