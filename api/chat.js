@@ -7,10 +7,8 @@ export default function handler(req, res) {
       const { msg, from } = req.body;
 
       if (from === "owner") {
-        // bot/owner reply
         lastOwnerMsg = msg;
       } else {
-        // user msg from WebApp
         lastUserMsg = msg;
       }
 
@@ -21,11 +19,11 @@ export default function handler(req, res) {
   }
 
   if (req.method === "GET") {
-    return res.json({
+    return res.status(200).json({
       user: lastUserMsg,
       owner: lastOwnerMsg
     });
   }
 
   return res.status(405).json({ error: "Method Not Allowed" });
-}
+        }
