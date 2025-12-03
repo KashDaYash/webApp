@@ -3,6 +3,7 @@ let cache = {
   username: null,
   first_name: null,
   last_name: null,
+  photo_url: null,
   language_code: "en",
   is_premium: false,
   coins: 0
@@ -11,13 +12,12 @@ let cache = {
 export default function handler(req, res) {
   if (req.method === "POST") {
     try {
-      // update user cache
       cache = {
         ...cache,
         ...req.body
       };
       return res.status(200).json({ ok: true });
-    } catch (e) {
+    } catch (err) {
       return res.status(500).json({ error: "Invalid user data" });
     }
   }
@@ -27,4 +27,4 @@ export default function handler(req, res) {
   }
 
   return res.status(405).json({ error: "Method Not Allowed" });
-}
+    }
