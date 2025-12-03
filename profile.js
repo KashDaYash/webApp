@@ -14,7 +14,7 @@ tg.setBottomBarColor("#000000");
 
 // --- CONFIG ---
 // Check karein ki ye URL bilkul sahi ho (https://.../api)
-const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app/api";
+const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app";
 
 // --- LOCALIZATION ---
 const localization = {
