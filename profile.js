@@ -6,7 +6,6 @@ try { tg.requestFullscreen(); } catch(e){}
 tg.setHeaderColor("#1c1c1c"); tg.setBackgroundColor("#1e1e1e"); tg.setBottomBarColor("#000000");
 
 // --- CONFIG ---
-// Abhi hum dummy link use karenge kyunki hum verify nahi kar rahe
 const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app/api"; 
 
 // --- LOCALIZATION ---
@@ -14,22 +13,24 @@ const localization = {
   en: {
     title: "Your Profile", premium: "💸 Premium", id: "ID:", username: "Username:",
     options: "Options", settings: "⚙ Settings", messages: "📩 Messages",
-    language: "🌐 Language", subscription: "💱 Subscription", theme: "🎨 Theme Customizer",
+    language: "🌐 Language", theme: "🎨 Theme",
     close: "✦ Close Profile ✦", copied: "Copied!",
     language_question: "Select Language:", language_current_en: "Interface Language changed to English.",
-    language_current_hi: "Interface Language changed to Hindi.", chats_title: "Chats"
+    language_current_hi: "Interface Language changed to Hindi.", chats_title: "Chats",
+    not_available: "Not Available", user_not_found: "User Not Found", guest: "Guest User"
   },
   hi: {
     title: "आपकी प्रोफाइल", premium: "💸 प्रीमियम", id: "आईडी:", username: "यूज़रनेम:",
     options: "विकल्प", settings: "⚙ सेटिंग्स", messages: "📩 संदेश",
-    language: "🌐 भाषा", subscription: "💱 सदस्यता", theme: "🎨 थीम कस्टमाइज़र",
+    language: "🌐 भाषा", theme: "🎨 थीम",
     close: "✦ प्रोफाइल बंद करें ✦", copied: "कॉपी किया गया!",
     language_question: "भाषा चुनें:", language_current_en: "इंटरफ़ेस भाषा अंग्रेजी में बदल दी गई है।",
-    language_current_hi: "इंटरफ़ेस भाषा हिंदी में बदल दी गई है।", chats_title: "चैट्स"
+    language_current_hi: "इंटरफ़ेस भाषा हिंदी में बदल दी गई है।", chats_title: "चैट्स",
+    not_available: "उपलब्ध नहीं", user_not_found: "उपयोगकर्ता नहीं मिला", guest: "अतिथि उपयोगकर्ता"
   }
 };
 
-// --- THEME & COLOR LOGIC ---
+// --- THEME LOGIC ---
 const root = document.documentElement;
 const toggle = document.getElementById("themeToggle");
 let theme = localStorage.getItem("theme") || tg.colorScheme || "dark";
@@ -40,7 +41,7 @@ function applyCustomColor(hexColor) {
   const r = parseInt(hexColor.slice(1, 3), 16), g = parseInt(hexColor.slice(3, 5), 16), b = parseInt(hexColor.slice(5, 7), 16);
   root.style.setProperty('--glow', `rgba(${r}, ${g}, ${b}, 0.45)`);
   localStorage.setItem("customAccentColor", hexColor);
-  tg.showAlert("Theme color successfully updated! 🎨");
+  tg.showAlert("Theme updated!");
 }
 
 function applyTheme(name){
@@ -65,34 +66,62 @@ toggle.addEventListener("click", () => {
   applyTheme(theme);
 });
 
-// --- USER DATA & INTERFACE ---
-const u = tg.initDataUnsafe?.user || {};
+// --- USER DATA (STRICT: NO FAKE DATA) ---
+// Agar data nahi hai (Browser me), to undefined rahega. Hum nakli data nahi banayenge.
+const u = tg.initDataUnsafe?.user || {}; 
+
 let code = (u.language_code || "en").split("-")[0];
 
 function updateInterfaceText(langCode) {
     const lang = localization[langCode] || localization.en;
     document.title = lang.title;
+    
+    // Labels
     document.querySelector('.profile-body .info:nth-child(1) strong').textContent = lang.id;
     document.querySelector('.profile-body .info:nth-child(2) strong').textContent = lang.username;
-    document.querySelector('.menu-header h3').textContent = lang.options;
-    const mb = document.getElementById("menuBody");
-    mb.children[0].textContent = lang.settings; mb.children[1].textContent = lang.messages;
-    mb.children[2].textContent = lang.language; mb.children[3].textContent = lang.subscription;
-    mb.children[4].textContent = lang.theme;
     
-    // Chat Header Title
+    document.querySelector('.menu-header h3').textContent = lang.options;
+    
+    const mb = document.getElementById("menuBody");
+    mb.children[0].textContent = lang.settings;
+    mb.children[1].textContent = lang.messages;
+    mb.children[2].textContent = lang.language;
+    mb.children[3].textContent = lang.theme;    
+    
     document.querySelector('.chat-header h3').textContent = lang.chats_title || "Chats";
 
+    // Premium Tag
     if (u.is_premium) document.getElementById("userPremium").innerHTML = lang.premium;
+    
+    // Language Tag
     const langMap = { en:"🇬🇧 English", ru:"🇷🇺 Русский", hi:"🇮🇳 हिन्दी", es:"🇪🇸 Español", de:"🇩🇪 Deutsch" };
-    document.getElementById("userLanguage").textContent = langMap[langCode] || langCode.toUpperCase();
+    
+    // Agar language code nahi hai to "Not Available" dikhana chahiye? 
+    // Usually language code "en" default le lete hain, par agar strict rehna hai:
+    if(u.language_code) {
+        document.getElementById("userLanguage").textContent = langMap[langCode] || langCode.toUpperCase();
+    } else {
+        document.getElementById("userLanguage").textContent = lang.not_available;
+    }
+    
+    // User Name Update inside function to support language switch if we use generic "Guest"
+    const realName = [u.first_name, u.last_name].filter(Boolean).join(" ");
+    document.getElementById("userName").textContent = realName || lang.user_not_found;
+
+    // ID Update
+    document.getElementById("userId").textContent = u.id || lang.not_available;
+
+    // Username Update
+    document.getElementById("userHandle").textContent = u.username ? "@"+u.username : lang.not_available;
 }
 
+// Avatar: Use generic if no photo
 document.getElementById("userAvatar").src = u.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-document.getElementById("userName").textContent = [u.first_name, u.last_name].filter(Boolean).join(" ") || "Guest";
+
+// Premium Badge: Hide if not premium
 if(u.is_premium) document.getElementById("userPremium").classList.remove("hidden");
-document.getElementById("userHandle").textContent = u.username ? "@"+u.username : "—";
-document.getElementById("userId").textContent = u.id || "—";
+
+// Run Initial Update
 updateInterfaceText(code);
 
 lottie.loadAnimation({
@@ -102,20 +131,25 @@ lottie.loadAnimation({
 
 document.querySelectorAll(".copyable").forEach(el=>{
   const span = el.querySelector("span");
+  // Copy tabhi karein agar text "Not Available" na ho
   el.addEventListener("click",()=>{
-    navigator.clipboard.writeText(span.textContent.trim());
-    const tt=document.createElement("div"); tt.className="tooltip"; tt.textContent=localization[code].copied;
+    const text = span.textContent.trim();
+    const lang = localization[code] || localization.en;
+    
+    if (text === lang.not_available || text === "—") {
+         tg.HapticFeedback.notificationOccurred('error');
+         return; // Kuch copy mat karo
+    }
+    
+    navigator.clipboard.writeText(text);
+    const tt=document.createElement("div"); tt.className="tooltip"; tt.textContent=lang.copied;
     el.appendChild(tt);
     requestAnimationFrame(()=>tt.style.opacity=1);
     setTimeout(()=>{ tt.style.opacity=0; setTimeout(()=>tt.remove(),200); },1000);
   });
 });
 
-// --- VERIFICATION BYPASS (DEVELOPER MODE) ---
-// Humne server verification hata diya hai taaki aap UI dekh sakein.
-const initData = tg.initData; 
-let IS_USER_VERIFIED = true; // Force verify
-
+// --- LOADER ---
 function startLoaderInterval() {
     let prog = 0;
     const bar = document.getElementById("progressBar");
@@ -129,13 +163,13 @@ function startLoaderInterval() {
                 document.getElementById("loadingScreen").style.display="none";
                 document.getElementById("mainContainer").style.display="flex"; 
                 document.querySelector(".container").style.display="block";
-                tg.MainButton.setText(localization[code].close).setParams({has_shine_effect:true}).show().onClick(()=>tg.close());
+                
+                const lang = localization[code] || localization.en;
+                tg.MainButton.setText(lang.close).setParams({has_shine_effect:true}).show().onClick(()=>tg.close());
             },300);
         }
     }, 18);
 }
-
-// Direct start without checking backend
 startLoaderInterval();
 
 // --- MENU & NAVIGATION ---
@@ -157,10 +191,12 @@ function handleMenuItemClick(event) {
     menuBody.style.display = "none";
     menuToggle.classList.remove("rotated");
     
+    const lang = localization[code] || localization.en;
+
     // LANGUAGE
-    if (itemText.includes(localization[code].language)) {
+    if (itemText.includes(lang.language)) {
         tg.showPopup({
-            title: localization[code].language_question,
+            title: lang.language_question,
             message: "Choose your interface language:",
             buttons: [ { id: 'en', text: '🇬🇧 English', type: 'default' }, { id: 'hi', text: '🇮🇳 हिन्दी', type: 'default' }, { id: 'cancel', text: 'Cancel', type: 'cancel' } ]
         }, (btn) => {
@@ -172,22 +208,22 @@ function handleMenuItemClick(event) {
         });
     } 
     // THEME
-    else if (itemText.includes(localization[code].theme)) {
+    else if (itemText.includes(lang.theme)) {
         const initialColor = localStorage.getItem("customAccentColor") || "#839ef0";
         colorInput.value = initialColor; hexDisplay.value = initialColor.toUpperCase();
         colorOverlay.classList.remove("hidden");
     }
-    // MESSAGES (Chat UI)
-    else if (itemText.includes(localization[code].messages)) { 
+    // MESSAGES
+    else if (itemText.includes(lang.messages)) { 
         showChatInterface();
     }
-    // OTHERS
-    else {
-        tg.showAlert("Feature coming soon!");
+    // SETTINGS
+    else if (itemText.includes(lang.settings)) {
+         tg.showAlert("Settings not available yet.");
     }
 }
 
-// --- CHAT INTERFACE LOGIC ---
+// --- CHAT INTERFACE (NO FAKE DATA) ---
 const chatContainer = document.getElementById("chatContainer");
 const backToProfileBtn = document.getElementById("backToProfileBtn");
 const chatList = document.getElementById("chatList");
@@ -196,9 +232,7 @@ function showChatInterface() {
     chatContainer.classList.remove("hidden");
     document.getElementById("mainContainer").classList.add("hidden"); 
     tg.BackButton.show(); 
-    
-    // Load Dummy Chats (Backend bypass)
-    loadDummyChats();
+    loadRealChats();
 }
 
 function hideChatInterface() {
@@ -210,49 +244,26 @@ function hideChatInterface() {
 tg.BackButton.onClick(hideChatInterface);
 backToProfileBtn.addEventListener("click", hideChatInterface);
 
-// Dummy Chat Loader for UI Testing
-function loadDummyChats() {
+function loadRealChats() {
     chatList.innerHTML = ''; 
     
-    // Fake Data
-    const dummyData = [
-        { 
-            participant_name: "Telegram Support", 
-            last_message: "Welcome to your new profile!", 
-            time: "Now", 
-            unread_count: 1,
-            avatar: "https://cdn-icons-png.flaticon.com/512/4712/4712109.png"
-        },
-        { 
-            participant_name: "KashDaYash", 
-            last_message: "Hey, check out this update.", 
-            time: "2h", 
-            unread_count: 0,
-            avatar: "https://cdn-icons-png.flaticon.com/512/2202/2202112.png"
-        }
-    ];
-
-    dummyData.forEach(chat => {
-        const el = document.createElement("div");
-        el.className = "chat-item";
-        el.innerHTML = `
-            <img src="${chat.avatar}" class="chat-avatar">
-            <div class="chat-info">
-                <div class="chat-name">${chat.participant_name}</div>
-                <div class="chat-last-msg">${chat.last_message}</div>
-            </div>
-            <div class="chat-meta">
-                <span>${chat.time}</span>
-                ${chat.unread_count > 0 ? `<div class="unread-badge">${chat.unread_count}</div>` : ''}
-            </div>
-        `;
-        el.addEventListener("click", () => tg.showAlert(`Opening chat with ${chat.participant_name}...`));
-        chatList.appendChild(el);
-    });
+    // Chunki abhi database connected nahi hai, aur "Nakli Data" mana hai.
+    // Hum sirf ek message dikhayenge ki koi chats nahi mili.
+    
+    // Agar hum baad me API connect karenge to yahan fetch code aayega.
+    // Abhi ke liye empty state:
+    
+    const emptyState = document.createElement("div");
+    emptyState.className = "loading-chats";
+    emptyState.textContent = "No conversations found.";
+    emptyState.style.opacity = "0.7";
+    emptyState.style.marginTop = "50px";
+    
+    chatList.appendChild(emptyState);
 }
 
 
-/* --- Color Picker Actions --- */
+// --- COLOR PICKER ---
 const colorOverlay = document.getElementById("colorPickerOverlay");
 const colorInput = document.getElementById("colorPickerInput");
 const hexDisplay = document.getElementById("hexInputDisplay");
