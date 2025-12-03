@@ -1,77 +1,20 @@
 // Command: profile.js
 const tg = window.Telegram.WebApp;
-
-// 1. Initialize immediately
 tg.ready();
 tg.expand();
 tg.enableVerticalSwipes();
+
 try { tg.requestFullscreen(); } catch(e){}
 
-// Set Colors
 tg.setHeaderColor("#1c1c1c");
 tg.setBackgroundColor("#1e1e1e");
 tg.setBottomBarColor("#000000");
 
-// --- CONFIG ---
-const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app";
-
-// --- STEP 1: USER DATA (SIMPLE WAY) ---
-// Hum wahi tarika use kar rahe hain jo aapke working code me hai
-const u = tg.initDataUnsafe?.user || {};
-
-// Debug ke liye (Baad me hata dena)
-alert("User loaded:", u.username);
-
-// --- LOCALIZATION ---
-const localization = {
-  en: {
-    title: "Your Profile", premium: "💸 Premium", id: "ID:", username: "Username:",
-    options: "Options", settings: "⚙ Settings", messages: "📩 Messages",
-    language: "🌐 Language", theme: "🎨 Theme",
-    close: "✦ Close Profile ✦", copied: "Copied!",
-    language_question: "Select Language:", language_current: "Language changed to English 🇬🇧",
-    chats_title: "Chats", not_available: "Not Available", user_not_found: "Guest User",
-    reset_confirm: "Reset theme to default?", reset_success: "Theme Reset!",
-    no_chats: "No conversations found.", loading_chats: "Loading chats..."
-  },
-  hi: {
-    title: "आपकी प्रोफाइल", premium: "💸 प्रीमियम", id: "आईडी:", username: "यूज़रनेम:",
-    options: "विकल्प", settings: "⚙ सेटिंग्स", messages: "📩 संदेश",
-    language: "🌐 भाषा", theme: "🎨 थीम",
-    close: "✦ प्रोफाइल बंद करें ✦", copied: "कॉपी किया गया!",
-    language_question: "भाषा चुनें:", language_current: "भाषा हिंदी में बदल दी गई है 🇮🇳",
-    chats_title: "चैट्स", not_available: "उपलब्ध नहीं", user_not_found: "अतिथि उपयोगकर्ता",
-    reset_confirm: "क्या आप थीम रिसेट करना चाहते हैं?", reset_success: "थीम रिसेट हो गई!",
-    no_chats: "कोई संदेश नहीं मिला", loading_chats: "चैट लोड हो रही हैं..."
-  }
-};
-
-// --- THEME LOGIC ---
+/* Theme */
 const root = document.documentElement;
 const toggle = document.getElementById("themeToggle");
 let theme = localStorage.getItem("theme") || tg.colorScheme || "dark";
 
-function applyCustomColor(hexColor) {
-  if (!/^#([0-9A-F]{3}){1,2}$/i.test(hexColor)) { tg.showAlert("Invalid Hex Code!"); return; }
-  root.style.setProperty('--accent', hexColor);
-  const r = parseInt(hexColor.slice(1, 3), 16), g = parseInt(hexColor.slice(3, 5), 16), b = parseInt(hexColor.slice(5, 7), 16);
-  root.style.setProperty('--glow', `rgba(${r}, ${g}, ${b}, 0.45)`);
-  localStorage.setItem("customAccentColor", hexColor);
-}
-
-function applyTheme(name){
-  const customColor = localStorage.getItem("customAccentColor");
-  if (customColor) applyCustomColor(customColor);
-  else { root.style.removeProperty('--accent'); root.style.removeProperty('--glow'); }
-  
-  if(name==="light"){
-      root.classList.add("light-theme"); toggle.textContent="☀️";
-      tg.setHeaderColor("#ffffff"); tg.setBackgroundColor("#f5f5f5");
-  } else {
-      root.classList.remove("light-theme"); toggle.textContent="🌙";
-      tg.setHeaderColor("#1c1c1c"); tg.setBackgroundColor("#1e1e1e");
-  }
-}
 applyTheme(theme);
 
 toggle.addEventListener("click", () => {
@@ -82,267 +25,98 @@ toggle.addEventListener("click", () => {
   applyTheme(theme);
 });
 
-
-// --- RENDER LOGIC ---
-// Language detect logic
-let langCode = localStorage.getItem("languageCode");
-if (!langCode) {
-    langCode = (u.language_code || "en").split("-")[0];
-}
-if (!localization[langCode]) langCode = "en";
-
-function renderProfile() {
-    const lang = localization[langCode];
-    
-    // 1. Text Updates
-    document.title = lang.title;
-    document.querySelector('.profile-body .info:nth-child(1) strong').textContent = lang.id;
-    document.querySelector('.profile-body .info:nth-child(2) strong').textContent = lang.username;
-    document.querySelector('.menu-header h3').textContent = lang.options;
-    
-    const mb = document.getElementById("menuBody");
-    mb.children[0].textContent = lang.settings;
-    mb.children[1].textContent = lang.messages;
-    mb.children[2].textContent = lang.language;
-    mb.children[3].textContent = lang.theme;    
-    
-    document.querySelector('.chat-header h3').textContent = lang.chats_title;
-
-    // 2. Data Filling (Directly using 'u' variable)
-    const realName = [u.first_name, u.last_name].filter(Boolean).join(" ");
-    
-    document.getElementById("userName").textContent = realName || lang.user_not_found;
-    document.getElementById("userId").textContent = u.id || lang.not_available;
-    document.getElementById("userHandle").textContent = u.username ? "@"+u.username : lang.not_available;
-    
-    document.getElementById("userAvatar").src = u.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-
-    // Premium Check
-    const premTag = document.getElementById("userPremium");
-    if(u.is_premium) {
-        premTag.innerHTML = lang.premium;
-        premTag.classList.remove("hidden");
-    } else {
-        premTag.classList.add("hidden");
-    }
-
-    // Lang Display
-    const langMap = { en:"🇬🇧 English", ru:"🇷🇺 Русский", hi:"🇮🇳 हिन्दी", es:"🇪🇸 Español", de:"🇩🇪 Deutsch" };
-    document.getElementById("userLanguage").textContent = langMap[langCode] || langCode.toUpperCase();
+function applyTheme(name){
+  if(name==="light"){
+    root.classList.add("light-theme");
+    toggle.textContent="☀️";
+  } else {
+    root.classList.remove("light-theme");
+    toggle.textContent="🌙";
+  }
 }
 
-// Call Render Immediately
-renderProfile();
+/* USER DATA */
+const u = tg.initDataUnsafe?.user || {};
 
-// Lottie Animation
+document.getElementById("userAvatar").src =
+  u.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+
+document.getElementById("userName").textContent =
+  [u.first_name, u.last_name].filter(Boolean).join(" ") || "Guest";
+
+if(u.is_premium){
+  const p=document.getElementById("userPremium");
+  p.classList.remove("hidden");
+  p.innerHTML=`💸 Premium`;
+}
+
+document.getElementById("userHandle").textContent =
+  u.username ? "@"+u.username : "—";
+
+document.getElementById("userId").textContent =
+  u.id || "—";
+
+const langMap = {
+  en:"🇬🇧 English", ru:"🇷🇺 Русский", hi:"🇮🇳 हिन्दी",
+  es:"🇪🇸 Español", de:"🇩🇪 Deutsch"
+};
+const code = (u.language_code || "en").split("-")[0];
+document.getElementById("userLanguage").textContent =
+  langMap[code] || code.toUpperCase();
+
+/* Lottie */
 lottie.loadAnimation({
-  container: document.getElementById("lottie"), renderer: "svg", loop: true, autoplay: true,
+  container: document.getElementById("lottie"),
+  renderer: "svg", loop: true, autoplay: true,
   path: "https://assets2.lottiefiles.com/packages/lf20_jv4xehxh.json"
 });
 
-// Copy Logic
+/* Copy Tooltip */
 document.querySelectorAll(".copyable").forEach(el=>{
   const span = el.querySelector("span");
   el.addEventListener("click",()=>{
-    const text = span.textContent.trim();
-    const lang = localization[langCode];
-    if (text === lang.not_available || text === "—") {
-         tg.HapticFeedback.notificationOccurred('error'); return;
-    }
-    navigator.clipboard.writeText(text);
-    const tt=document.createElement("div"); tt.className="tooltip"; tt.textContent=lang.copied;
+    navigator.clipboard.writeText(span.textContent.trim());
+    const tt=document.createElement("div");
+    tt.className="tooltip"; tt.textContent="Copied!";
     el.appendChild(tt);
     requestAnimationFrame(()=>tt.style.opacity=1);
-    setTimeout(()=>{ tt.style.opacity=0; setTimeout(()=>tt.remove(),200); },1000);
+    setTimeout(()=>{
+      tt.style.opacity=0;
+      setTimeout(()=>tt.remove(),200);
+    },1000);
   });
 });
 
-// --- LOADER ---
-function startLoader() {
-    let prog = 0;
-    const bar = document.getElementById("progressBar");
-    const txt = document.getElementById("progressText");
-    const interval = setInterval(()=>{
-        prog += 2;
-        bar.style.width = prog + "%"; txt.textContent = prog + "%";
-        if(prog >= 100){
-            clearInterval(interval);
-            document.getElementById("loadingScreen").style.opacity="0";
-            setTimeout(()=>{
-                document.getElementById("loadingScreen").style.display="none";
-                document.getElementById("mainContainer").style.display="flex";
-                document.querySelector(".container").style.display="flex";
-                const lang = localization[langCode];
-                tg.MainButton.setText(lang.close).setParams({has_shine_effect:true}).show().onClick(()=>tg.close());
-            },300);
-        }
-    }, 15);
-}
-startLoader();
+/* Loader */
+let prog=0;
+const bar=document.getElementById("progressBar");
+const txt=document.getElementById("progressText");
 
-// --- MENU ACTIONS ---
+const interval=setInterval(()=>{
+  prog+=1;
+  bar.style.width=prog+"%";
+  txt.textContent=prog+"%";
+
+  if(prog>=100){
+    clearInterval(interval);
+    document.getElementById("loadingScreen").style.opacity="0";
+    setTimeout(()=>{
+      document.getElementById("loadingScreen").style.display="none";
+      document.querySelector(".container").style.display="block";
+      tg.MainButton.setText("✦ Close Profile ✦")
+        .setParams({has_shine_effect:true})
+        .show()
+        .onClick(()=>tg.close());
+    },300);
+  }
+},18);
+
+/* Expandable Menu */
 const menuToggle=document.getElementById("menuToggle");
 const menuBody=document.getElementById("menuBody");
-const menuItems = document.querySelectorAll(".menu-item");
 
 menuToggle.addEventListener("click",()=>{
   const open = menuBody.style.display==="flex";
   menuBody.style.display = open ? "none" : "flex";
   menuToggle.classList.toggle("rotated", !open);
 });
-
-menuItems.forEach(item => { item.addEventListener("click", handleMenuItemClick); });
-
-function handleMenuItemClick(event) {
-    const itemText = event.currentTarget.textContent.trim();
-    tg.HapticFeedback.impactOccurred('light');
-    
-    menuBody.style.display = "none";
-    menuToggle.classList.remove("rotated");
-    
-    const lang = localization[langCode];
-
-    if (itemText.includes(lang.language)) {
-        tg.showPopup({
-            title: lang.language_question, message: "Select Interface Language:",
-            buttons: [
-                { id: 'en', text: '🇬🇧 English', type: 'default' },
-                { id: 'hi', text: '🇮🇳 हिन्दी', type: 'default' },
-                { id: 'cancel', text: 'Cancel', type: 'cancel' }
-            ]
-        }, (btnId) => {
-            if (btnId === 'en' || btnId === 'hi') {
-                langCode = btnId;
-                localStorage.setItem("languageCode", btnId);
-                renderProfile();
-                tg.showAlert(localization[langCode].language_current);
-            }
-        });
-    }
-    else if (itemText.includes(lang.theme)) {
-        const initialColor = localStorage.getItem("customAccentColor") || "#839ef0";
-        colorInput.value = initialColor; hexDisplay.value = initialColor.toUpperCase();
-        colorOverlay.classList.remove("hidden");
-    }
-    else if (itemText.includes(lang.messages)) {
-        showChatInterface();
-    }
-    else if (itemText.includes(lang.settings)) {
-         tg.showAlert("Settings not available yet.");
-    }
-}
-
-// --- CHAT INTERFACE & API ---
-const chatContainer = document.getElementById("chatContainer");
-const backToProfileBtn = document.getElementById("backToProfileBtn");
-const chatList = document.getElementById("chatList");
-const chatSearchInput = document.getElementById("chatSearchInput");
-
-function showChatInterface() {
-    chatContainer.classList.remove("hidden");
-    document.getElementById("mainContainer").classList.add("hidden");
-    tg.BackButton.show();
-    fetchChats();
-}
-
-function hideChatInterface() {
-    chatContainer.classList.add("hidden");
-    document.getElementById("mainContainer").classList.remove("hidden");
-    tg.BackButton.hide();
-}
-
-tg.BackButton.onClick(hideChatInterface);
-backToProfileBtn.addEventListener("click", hideChatInterface);
-
-async function fetchChats() {
-    const lang = localization[langCode];
-    chatList.innerHTML = `<div class="loading-chats">${lang.loading_chats}</div>`;
-
-    try {
-        const userId = u.id || 0; // Directly using 'u'
-        const res = await fetch(`${VERCEL_BASE_URL}/get-chats?user_id=${userId}`);
-        const data = await res.json();
-
-        chatList.innerHTML = '';
-
-        if (data.success && data.data.length > 0) {
-            renderChatList(data.data);
-        } else {
-            showNoChatsMessage();
-        }
-    } catch (e) {
-        showNoChatsMessage();
-    }
-}
-
-function renderChatList(chats) {
-    chats.forEach(chat => {
-        const el = document.createElement("div");
-        el.className = "chat-item";
-        el.setAttribute("data-name", chat.participant_name.toLowerCase());
-        el.innerHTML = `
-            <img src="${chat.avatar}" class="chat-avatar">
-            <div class="chat-info">
-                <div class="chat-name">${chat.participant_name}</div>
-                <div class="chat-last-msg">${chat.last_message}</div>
-            </div>
-            <div class="chat-meta">
-                <span>${chat.time}</span>
-                ${chat.unread_count > 0 ? `<div class="unread-badge">${chat.unread_count}</div>` : ''}
-            </div>
-        `;
-        el.addEventListener("click", () => tg.showAlert("Opening chat..."));
-        chatList.appendChild(el);
-    });
-}
-
-function showNoChatsMessage() {
-    const lang = localization[langCode];
-    const empty = document.createElement("div");
-    empty.className = "loading-chats";
-    empty.textContent = lang.no_chats;
-    chatList.appendChild(empty);
-}
-
-// Search Logic
-chatSearchInput.addEventListener("input", (e) => {
-    const term = e.target.value.toLowerCase();
-    const items = document.querySelectorAll(".chat-item");
-    items.forEach(item => {
-        const name = item.getAttribute("data-name");
-        item.style.display = name.includes(term) ? "flex" : "none";
-    });
-});
-
-
-// --- COLOR PICKER ---
-const colorOverlay = document.getElementById("colorPickerOverlay");
-const colorInput = document.getElementById("colorPickerInput");
-const hexDisplay = document.getElementById("hexInputDisplay");
-const setColorBtn = document.getElementById("setColorBtn");
-const resetColorBtn = document.getElementById("resetColorBtn");
-const cancelColorBtn = document.getElementById("cancelColorBtn");
-
-colorInput.addEventListener('input', () => hexDisplay.value = colorInput.value.toUpperCase());
-hexDisplay.addEventListener('input', () => { if (/^#([0-9A-F]{3}){1,2}$/i.test(hexDisplay.value)) colorInput.value = hexDisplay.value; });
-
-function hideColorPicker() { colorOverlay.classList.add("hidden"); }
-
-setColorBtn.addEventListener("click", () => {
-    applyCustomColor(colorInput.value);
-    hideColorPicker();
-});
-
-resetColorBtn.addEventListener("click", () => {
-    const lang = localization[langCode];
-    tg.showConfirm(lang.reset_confirm, (confirmed) => {
-        if (confirmed) {
-            localStorage.removeItem("customAccentColor");
-            applyTheme(theme);
-            tg.showAlert(lang.reset_success);
-            hideColorPicker();
-        }
-    });
-});
-
-cancelColorBtn.addEventListener("click", hideColorPicker);
