@@ -6,14 +6,15 @@ try { tg.requestFullscreen(); } catch(e){}
 tg.setHeaderColor("#1c1c1c"); tg.setBackgroundColor("#1e1e1e"); tg.setBottomBarColor("#000000");
 
 // --- CONFIG ---
-const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app/api"; // Ensure this matches your Vercel URL
+// Abhi hum dummy link use karenge kyunki hum verify nahi kar rahe
+const VERCEL_BASE_URL = "https://webapp-seven-lilac.vercel.app/api"; 
 
 // --- LOCALIZATION ---
 const localization = {
   en: {
     title: "Your Profile", premium: "💸 Premium", id: "ID:", username: "Username:",
     options: "Options", settings: "⚙ Settings", messages: "📩 Messages",
-    language: "🌐 Language", subscription: "💱 Subscription", theme: "🎨 Theme",
+    language: "🌐 Language", subscription: "💱 Subscription", theme: "🎨 Theme Customizer",
     close: "✦ Close Profile ✦", copied: "Copied!",
     language_question: "Select Language:", language_current_en: "Interface Language changed to English.",
     language_current_hi: "Interface Language changed to Hindi.", chats_title: "Chats"
@@ -21,7 +22,7 @@ const localization = {
   hi: {
     title: "आपकी प्रोफाइल", premium: "💸 प्रीमियम", id: "आईडी:", username: "यूज़रनेम:",
     options: "विकल्प", settings: "⚙ सेटिंग्स", messages: "📩 संदेश",
-    language: "🌐 भाषा", subscription: "💱 सदस्यता", theme: "🎨 थीम",
+    language: "🌐 भाषा", subscription: "💱 सदस्यता", theme: "🎨 थीम कस्टमाइज़र",
     close: "✦ प्रोफाइल बंद करें ✦", copied: "कॉपी किया गया!",
     language_question: "भाषा चुनें:", language_current_en: "इंटरफ़ेस भाषा अंग्रेजी में बदल दी गई है।",
     language_current_hi: "इंटरफ़ेस भाषा हिंदी में बदल दी गई है।", chats_title: "चैट्स"
@@ -110,9 +111,10 @@ document.querySelectorAll(".copyable").forEach(el=>{
   });
 });
 
-// --- VERIFICATION & LOADER ---
+// --- VERIFICATION BYPASS (DEVELOPER MODE) ---
+// Humne server verification hata diya hai taaki aap UI dekh sakein.
 const initData = tg.initData; 
-let IS_USER_VERIFIED = false;
+let IS_USER_VERIFIED = true; // Force verify
 
 function startLoaderInterval() {
     let prog = 0;
@@ -125,7 +127,7 @@ function startLoaderInterval() {
             document.getElementById("loadingScreen").style.opacity="0";
             setTimeout(()=>{
                 document.getElementById("loadingScreen").style.display="none";
-                document.getElementById("mainContainer").style.display="flex"; // Changed from block to flex
+                document.getElementById("mainContainer").style.display="flex"; 
                 document.querySelector(".container").style.display="block";
                 tg.MainButton.setText(localization[code].close).setParams({has_shine_effect:true}).show().onClick(()=>tg.close());
             },300);
@@ -133,29 +135,8 @@ function startLoaderInterval() {
     }, 18);
 }
 
-async function verifyUserAndStartApp() {
-    try {
-        // NOTE: For debugging, if verification fails, check console logs.
-        const response = await fetch(`${VERCEL_BASE_URL}/auth/verify`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ initData: initData })
-        });
-        const data = await response.json();
-        if (response.ok && data.success) {
-            IS_USER_VERIFIED = true;
-            console.log("Verified:", data.user_id);
-            startLoaderInterval(); 
-        } else {
-            // Fallback for development if needed, or show error
-            tg.showAlert("Verification Failed: " + (data.message || "Unknown error"));
-            tg.close();
-        }
-    } catch (error) {
-        tg.showAlert("Network Error. Please check your VERCEL_BASE_URL.");
-        tg.close();
-    }
-}
-verifyUserAndStartApp();
+// Direct start without checking backend
+startLoaderInterval();
 
 // --- MENU & NAVIGATION ---
 const menuToggle=document.getElementById("menuToggle");
@@ -213,56 +194,61 @@ const chatList = document.getElementById("chatList");
 
 function showChatInterface() {
     chatContainer.classList.remove("hidden");
-    document.getElementById("mainContainer").classList.add("hidden"); // Hide profile
-    tg.BackButton.show(); // Show Telegram Back Button
+    document.getElementById("mainContainer").classList.add("hidden"); 
+    tg.BackButton.show(); 
     
-    // Fetch Chats
-    loadChats();
+    // Load Dummy Chats (Backend bypass)
+    loadDummyChats();
 }
 
 function hideChatInterface() {
     chatContainer.classList.add("hidden");
-    document.getElementById("mainContainer").classList.remove("hidden"); // Show profile
+    document.getElementById("mainContainer").classList.remove("hidden"); 
     tg.BackButton.hide();
 }
 
 tg.BackButton.onClick(hideChatInterface);
 backToProfileBtn.addEventListener("click", hideChatInterface);
 
-async function loadChats() {
-    chatList.innerHTML = '<div class="loading-chats">Loading...</div>';
-    try {
-        // Backend se chats fetch karein
-        const res = await fetch(`${VERCEL_BASE_URL}/get-chats?user_id=${u.id || 0}`);
-        const data = await res.json();
-        
-        chatList.innerHTML = ''; // Clear loader
-        
-        if (data.success && data.data.length > 0) {
-            data.data.forEach(chat => {
-                const el = document.createElement("div");
-                el.className = "chat-item";
-                el.innerHTML = `
-                    <img src="${chat.avatar}" class="chat-avatar">
-                    <div class="chat-info">
-                        <div class="chat-name">${chat.participant_name}</div>
-                        <div class="chat-last-msg">${chat.last_message}</div>
-                    </div>
-                    <div class="chat-meta">
-                        <span>${chat.time}</span>
-                        ${chat.unread_count > 0 ? `<div class="unread-badge">${chat.unread_count}</div>` : ''}
-                    </div>
-                `;
-                // Click logic for later
-                el.addEventListener("click", () => tg.showAlert(`Opening chat with ${chat.participant_name}...`));
-                chatList.appendChild(el);
-            });
-        } else {
-            chatList.innerHTML = '<div class="loading-chats">No messages yet.</div>';
+// Dummy Chat Loader for UI Testing
+function loadDummyChats() {
+    chatList.innerHTML = ''; 
+    
+    // Fake Data
+    const dummyData = [
+        { 
+            participant_name: "Telegram Support", 
+            last_message: "Welcome to your new profile!", 
+            time: "Now", 
+            unread_count: 1,
+            avatar: "https://cdn-icons-png.flaticon.com/512/4712/4712109.png"
+        },
+        { 
+            participant_name: "KashDaYash", 
+            last_message: "Hey, check out this update.", 
+            time: "2h", 
+            unread_count: 0,
+            avatar: "https://cdn-icons-png.flaticon.com/512/2202/2202112.png"
         }
-    } catch (e) {
-        chatList.innerHTML = '<div class="loading-chats">Failed to load chats.</div>';
-    }
+    ];
+
+    dummyData.forEach(chat => {
+        const el = document.createElement("div");
+        el.className = "chat-item";
+        el.innerHTML = `
+            <img src="${chat.avatar}" class="chat-avatar">
+            <div class="chat-info">
+                <div class="chat-name">${chat.participant_name}</div>
+                <div class="chat-last-msg">${chat.last_message}</div>
+            </div>
+            <div class="chat-meta">
+                <span>${chat.time}</span>
+                ${chat.unread_count > 0 ? `<div class="unread-badge">${chat.unread_count}</div>` : ''}
+            </div>
+        `;
+        el.addEventListener("click", () => tg.showAlert(`Opening chat with ${chat.participant_name}...`));
+        chatList.appendChild(el);
+    });
 }
 
 
