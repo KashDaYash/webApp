@@ -6,16 +6,19 @@ module.exports = async (req, res) => {
   try {
     await connectDB();
     
-    // Frontend se 'query' aur 'myId' receive karein
-    const { query, myId } = req.query;
+    let { query, myId } = req.query;
 
     if (!query || query.trim() === "") {
       return res.json([]);
     }
 
+    // --- FIX: ID ko Number mein convert karein ---
+    // Agar myId nahi aaya to 0 maan lo taaki crash na ho
+    const currentUserId = myId ? Number(myId) : 0;
+
     const searchCondition = {
-      // Logic: Meri ID ko chhod kar baaki sab dhundo
-      tg_id: { $ne: myId },
+      // Logic: Database wali tg_id (Number) !== currentUserId (Number)
+      tg_id: { $ne: currentUserId },
       
       // Naam ya Username match karo
       $or: [
