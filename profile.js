@@ -3,26 +3,47 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// --- SETUP & VARS ---
+// --- SETUP ---
 const root = document.documentElement;
 let currentTheme = localStorage.getItem("theme") || "dark";
 applyTheme(currentTheme);
 
-// Fallback data if testing outside Telegram
-const u = tg.initDataUnsafe?.user || { id: 12345, first_name: "Yash", username: "Demo" };
+// --- TELEGRAM DATA CHECK ---
+// Real Telegram Data
+const u = tg.initDataUnsafe?.user;
+
 let currentChatId = null;
 let chatPoll = null;
 
-// --- INIT ---
+// --- INIT LOGIC ---
 window.onload = () => {
-  // Sync
+  const loader = document.getElementById("loadingScreen");
+  const gate = document.getElementById("loginGate");
+  const app = document.getElementById("app");
+  const nav = document.getElementById("bottomNav");
+
+  // 1. CHECK: ARE WE IN TELEGRAM?
+  // Agar u (user) undefined hai, matlab browser me hain
+  if (!u || !u.id) {
+    if(loader) loader.style.display = "none";
+    if(gate) gate.classList.remove("hidden"); // Show Login Gate
+    if(app) app.classList.add("hidden"); // Hide App
+    return; // STOP EXECUTION HERE
+  }
+
+  // 2. IF TELEGRAM: SHOW APP
+  if(gate) gate.classList.add("hidden");
+  if(app) app.classList.remove("hidden");
+  if(nav) nav.classList.remove("hidden");
+
+  // 3. Sync User (Sirf tabhi jab asli user ho)
   fetch('/api/syncUser', { 
     method: 'POST', 
     headers: {'Content-Type': 'application/json'}, 
     body: JSON.stringify(u) 
   }).catch(console.error);
 
-  // Fill UI
+  // 4. Fill UI
   if(document.getElementById("userName")) {
       document.getElementById("userName").textContent = u.first_name;
       document.getElementById("userHandle").textContent = u.username ? "@"+u.username : "—";
@@ -31,8 +52,7 @@ window.onload = () => {
   }
 
   setTimeout(() => {
-    const l = document.getElementById("loadingScreen");
-    if(l) l.style.display = "none";
+    if(loader) loader.style.display = "none";
   }, 500);
 
   loadRecentChats();
@@ -77,7 +97,7 @@ function applyTheme(theme) {
   }
 }
 
-// --- SEARCH (DOUBLE PROTECTION FIX) ---
+// --- SEARCH ---
 const searchInput = document.getElementById("userSearch");
 let searchTimer;
 
@@ -105,11 +125,13 @@ async function performSearch(query) {
   sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.6;">Searching...</div>`;
 
   try {
+    // Check u.id exists before searching
+    if(!u || !u.id) return;
+
     const res = await fetch(`/api/search?query=${query}&myId=${u.id}`);
     const rawData = await res.json();
     
-    // **FAIL-SAFE FILTER**: JS se khud ki ID hatao (Agar backend fail ho jaye)
-    // Ensure both IDs are compared as Numbers
+    // FAIL-SAFE: Filter out self
     const data = rawData.filter(user => Number(user.tg_id) !== Number(u.id));
 
     if (data.length === 0) {
@@ -138,7 +160,7 @@ async function loadRecentChats() {
   const list = document.getElementById("recentChatsList");
   const empty = document.getElementById("emptyChatState");
   
-  if(!list) return;
+  if(!list || !u || !u.id) return;
 
   try {
     const res = await fetch(`/api/chat?type=list&myId=${u.id}`);
@@ -166,12 +188,10 @@ async function loadRecentChats() {
   } catch (e) {}
 }
 
-// --- CHAT ROOM & SEND FIX ---
+// --- CHAT ROOM ---
 window.openChatRoom = (id, name, photo) => {
-  // Explicitly convert to Number to avoid string mismatch issues
   currentChatId = Number(id);
-  console.log("Chat Opened with:", currentChatId); // Debug Log
-
+  
   document.getElementById("chatPartnerName").textContent = name;
   document.getElementById("chatPartnerImg").src = photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   
@@ -195,7 +215,7 @@ window.closeChatRoom = () => {
 };
 
 async function loadMessages() {
-  if (!currentChatId) return;
+  if (!currentChatId || !u || !u.id) return;
   try {
     const res = await fetch(`/api/chat?u1=${u.id}&u2=${currentChatId}`);
     const msgs = await res.json();
@@ -215,42 +235,28 @@ async function loadMessages() {
   } catch(e) {}
 }
 
-// --- SEND MESSAGE FUNCTION ---
+// --- SEND MESSAGE ---
 window.sendMsg = async () => {
-  // 1. Debugging: Check if function runs
-  console.log("Send Triggered. ID:", currentChatId);
-
   const inp = document.getElementById("msgInput");
   const txt = inp.value.trim();
   
-  // 2. Validation
-  if(!currentChatId) {
-    alert("Error: No chat partner selected. Close chat and reopen.");
-    return;
-  }
-  if(!txt) return;
+  if(!currentChatId || !txt || !u || !u.id) return;
   
   inp.value = "";
   const box = document.getElementById("messageArea");
   const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
   
-  // 3. Optimistic UI
   box.innerHTML += `<div class="msg out" style="opacity:0.7">${txt} <span class="msg-time">${time}</span></div>`;
   box.scrollTop = box.scrollHeight;
   
-  // 4. API Call
   try {
-    const req = await fetch('/api/chat', {
+    await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sender_id: u.id, receiver_id: currentChatId, text: txt })
     });
-    
-    if(!req.ok) throw new Error("Send Failed");
-    
-    loadMessages(); // Reload to confirm
+    loadMessages();
   } catch(e) {
-    console.error(e);
-    alert("Failed to send message. Check internet.");
+    alert("Failed to send.");
   }
 };
