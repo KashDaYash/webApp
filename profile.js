@@ -236,3 +236,28 @@ async function sendMsg() {
     loadMessages();
   } catch(e) {}
 }
+
+// --- TEMPORARY TOOL: FAKE USER GENERATOR ---
+// Isse ek baar run karke delete kar dena
+
+window.createFakeUser = async () => {
+  const fakeId = Math.floor(Math.random() * 1000000);
+  await fetch('/api/syncUser', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      tg_id: fakeId,
+      first_name: "Demo User",
+      username: "demo_" + fakeId,
+      photo_url: "https://cdn-icons-png.flaticon.com/512/149/149071.png"
+    })
+  });
+  alert("Fake User Created! Ab search me 'Demo' likh kar try karein.");
+};
+
+// Console me ya button click par ye chalana padega
+// Aasani ke liye, page load hone ke 5 second baad apne aap ek user bana dete hain:
+setTimeout(() => {
+    // Agar aap chahein to is line ko uncomment karein test karne ke liye:
+    // createFakeUser(); 
+}, 5000);
