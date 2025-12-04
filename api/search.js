@@ -12,29 +12,24 @@ module.exports = async (req, res) => {
       return res.json([]);
     }
 
-    // --- FIX: ID ko Number mein convert karein ---
-    // Agar myId nahi aaya to 0 maan lo taaki crash na ho
-    const currentUserId = myId ? Number(myId) : 0;
+    // Ensure myId is a Number (Database match ke liye zaroori hai)
+    const excludeId = myId ? parseInt(myId) : 0;
 
-    const searchCondition = {
-      // Logic: Database wali tg_id (Number) !== currentUserId (Number)
-      tg_id: { $ne: currentUserId },
-      
-      // Naam ya Username match karo
+    // Database se data mango
+    const users = await User.find({
+      tg_id: { $ne: excludeId }, // Database level par filter
       $or: [
         { username: { $regex: query, $options: 'i' } },
         { first_name: { $regex: query, $options: 'i' } }
       ]
-    };
-
-    const users = await User.find(searchCondition)
-      .select('tg_id first_name username photo_url')
-      .limit(20);
+    })
+    .select('tg_id first_name username photo_url')
+    .limit(20);
 
     res.json(users);
     
   } catch (error) {
-    console.error("Search Error:", error);
+    console.error("Search API Error:", error);
     res.status(500).json([]);
   }
 };
