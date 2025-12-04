@@ -1,36 +1,38 @@
+// Command: profile.js
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// --- THEME ---
+// --- SETUP & VARS ---
 const root = document.documentElement;
 let currentTheme = localStorage.getItem("theme") || "dark";
 applyTheme(currentTheme);
 
-// --- USER ---
-const u = tg.initDataUnsafe?.user || { id: 12345, first_name: "Test", last_name: "User", username: "test_user" };
+// Fallback data if testing outside Telegram
+const u = tg.initDataUnsafe?.user || { id: 12345, first_name: "Yash", username: "Demo" };
 let currentChatId = null;
 let chatPoll = null;
 
+// --- INIT ---
 window.onload = () => {
   // Sync
   fetch('/api/syncUser', { 
     method: 'POST', 
     headers: {'Content-Type': 'application/json'}, 
     body: JSON.stringify(u) 
-  }).catch(e => console.log(e));
+  }).catch(console.error);
 
-  // UI Fill
+  // Fill UI
   if(document.getElementById("userName")) {
-      document.getElementById("userName").textContent = [u.first_name, u.last_name].join(" ");
-      document.getElementById("userHandle").textContent = u.username ? "@" + u.username : "No Username";
+      document.getElementById("userName").textContent = u.first_name;
+      document.getElementById("userHandle").textContent = u.username ? "@"+u.username : "—";
       document.getElementById("userId").textContent = u.id;
       document.getElementById("userAvatar").src = u.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   }
-  
+
   setTimeout(() => {
-    const loader = document.getElementById("loadingScreen");
-    if(loader) loader.style.display = "none";
+    const l = document.getElementById("loadingScreen");
+    if(l) l.style.display = "none";
   }, 500);
 
   loadRecentChats();
@@ -46,75 +48,76 @@ window.switchTab = (tabId, navEl) => {
   if(navEl) navEl.classList.add('active');
   
   if (tabId === 'tab-chat') {
-    const sInp = document.getElementById("userSearch");
-    if(sInp) sInp.value = "";
-    if(document.getElementById("suggestionList")) document.getElementById("suggestionList").innerHTML = "";
+    const inp = document.getElementById("userSearch");
+    if(inp) inp.value = "";
+    document.getElementById("suggestionList").innerHTML = "";
     loadRecentChats();
   }
 };
 
-// --- THEME TOGGLE ---
-const themeBtn = document.getElementById("themeToggle");
-if(themeBtn) {
-    themeBtn.addEventListener("click", () => {
-      currentTheme = currentTheme === "dark" ? "light" : "dark";
-      localStorage.setItem("theme", currentTheme);
-      applyTheme(currentTheme);
-    });
+// --- THEME ---
+window.toggleTheme = () => {
+  currentTheme = currentTheme === "dark" ? "light" : "dark";
+  localStorage.setItem("theme", currentTheme);
+  applyTheme(currentTheme);
 }
 
 function applyTheme(theme) {
-  const btnIcon = document.querySelector("#themeToggle span");
+  const btn = document.querySelector("#themeToggle span");
   if (theme === "light") {
     root.classList.add("light-theme");
     tg.setHeaderColor("#f3f4f6");
     tg.setBackgroundColor("#f3f4f6");
-    if(btnIcon) btnIcon.textContent = "light_mode";
+    if(btn) btn.textContent = "light_mode";
   } else {
     root.classList.remove("light-theme");
     tg.setHeaderColor("#0f0f0f");
     tg.setBackgroundColor("#0f0f0f");
-    if(btnIcon) btnIcon.textContent = "dark_mode";
+    if(btn) btn.textContent = "dark_mode";
   }
 }
 
-// --- SEARCH (FIXED: SELF EXCLUSION) ---
+// --- SEARCH (DOUBLE PROTECTION FIX) ---
 const searchInput = document.getElementById("userSearch");
-const suggestions = document.getElementById("suggestionList");
-const recentList = document.getElementById("recentChatsList");
 let searchTimer;
 
 if(searchInput) {
     searchInput.addEventListener("input", (e) => {
       const val = e.target.value.trim();
+      const rec = document.getElementById("recentChatsList");
+      const sug = document.getElementById("suggestionList");
       
       if (!val) {
-        if(suggestions) suggestions.innerHTML = "";
-        if(recentList) recentList.classList.remove("hidden");
+        sug.innerHTML = "";
+        if(rec) rec.classList.remove("hidden");
         return;
       }
       
-      if(recentList) recentList.classList.add("hidden");
+      if(rec) rec.classList.add("hidden");
+      
       clearTimeout(searchTimer);
       searchTimer = setTimeout(() => performSearch(val), 300);
     });
 }
 
 async function performSearch(query) {
+  const sug = document.getElementById("suggestionList");
+  sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.6;">Searching...</div>`;
+
   try {
-    if(!suggestions) return;
-    suggestions.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.6;">Searching...</div>`;
-
-    // **CRITICAL FIX**: Passing &myId to exclude self
     const res = await fetch(`/api/search?query=${query}&myId=${u.id}`);
-    const data = await res.json();
+    const rawData = await res.json();
+    
+    // **FAIL-SAFE FILTER**: JS se khud ki ID hatao (Agar backend fail ho jaye)
+    // Ensure both IDs are compared as Numbers
+    const data = rawData.filter(user => Number(user.tg_id) !== Number(u.id));
 
-    if (!data || data.length === 0) {
-      suggestions.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;">No users found</div>`;
+    if (data.length === 0) {
+      sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;">No users found</div>`;
       return;
     }
 
-    suggestions.innerHTML = data.map(usr => `
+    sug.innerHTML = data.map(usr => `
       <div class="user-item" onclick="openChatRoom(${usr.tg_id}, '${usr.first_name}', '${usr.photo_url}')">
         <img src="${usr.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}">
         <div style="flex:1">
@@ -124,31 +127,34 @@ async function performSearch(query) {
         <span class="material-icons-round" style="color:var(--accent)">chat</span>
       </div>
     `).join('');
-    
   } catch (e) {
-    if(suggestions) suggestions.innerHTML = `<div style="padding:20px;text-align:center;color:red;">Error</div>`;
+    console.error(e);
+    sug.innerHTML = "Error";
   }
 }
 
 // --- RECENT CHATS ---
 async function loadRecentChats() {
-  if(!recentList) return;
+  const list = document.getElementById("recentChatsList");
+  const empty = document.getElementById("emptyChatState");
+  
+  if(!list) return;
+
   try {
     const res = await fetch(`/api/chat?type=list&myId=${u.id}`);
     const users = await res.json();
     
-    recentList.innerHTML = ''; 
-    const emptyState = document.getElementById("emptyChatState");
-
+    list.innerHTML = ""; 
+    
     if (!users || users.length === 0) {
-      if(emptyState) emptyState.classList.remove("hidden");
+      if(empty) empty.classList.remove("hidden");
       return;
     }
 
-    if(emptyState) emptyState.classList.add("hidden");
-    recentList.classList.remove("hidden");
+    if(empty) empty.classList.add("hidden");
+    list.classList.remove("hidden");
 
-    recentList.innerHTML = users.map(usr => `
+    list.innerHTML = users.map(usr => `
       <div class="user-item" onclick="openChatRoom(${usr.tg_id}, '${usr.first_name}', '${usr.photo_url}')">
         <img src="${usr.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}">
         <div style="flex:1">
@@ -160,15 +166,18 @@ async function loadRecentChats() {
   } catch (e) {}
 }
 
-// --- CHAT ROOM ---
+// --- CHAT ROOM & SEND FIX ---
 window.openChatRoom = (id, name, photo) => {
+  // Explicitly convert to Number to avoid string mismatch issues
   currentChatId = Number(id);
-  const overlay = document.getElementById("chatRoom");
-  
+  console.log("Chat Opened with:", currentChatId); // Debug Log
+
   document.getElementById("chatPartnerName").textContent = name;
   document.getElementById("chatPartnerImg").src = photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   
-  if(overlay) overlay.classList.add("open");
+  const overlay = document.getElementById("chatRoom");
+  overlay.classList.add("open");
+  
   tg.BackButton.show();
   tg.BackButton.onClick(closeChatRoom);
   
@@ -178,8 +187,7 @@ window.openChatRoom = (id, name, photo) => {
 };
 
 window.closeChatRoom = () => {
-  const overlay = document.getElementById("chatRoom");
-  if(overlay) overlay.classList.remove("open");
+  document.getElementById("chatRoom").classList.remove("open");
   tg.BackButton.hide();
   clearInterval(chatPoll);
   currentChatId = null;
@@ -192,8 +200,7 @@ async function loadMessages() {
     const res = await fetch(`/api/chat?u1=${u.id}&u2=${currentChatId}`);
     const msgs = await res.json();
     const box = document.getElementById("messageArea");
-    if(!box) return;
-
+    
     const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 150;
     
     box.innerHTML = msgs.map(m => {
@@ -208,56 +215,42 @@ async function loadMessages() {
   } catch(e) {}
 }
 
-// --- SEND MESSAGE ---
-const sendBtn = document.getElementById("sendBtn");
-const msgInput = document.getElementById("msgInput");
+// --- SEND MESSAGE FUNCTION ---
+window.sendMsg = async () => {
+  // 1. Debugging: Check if function runs
+  console.log("Send Triggered. ID:", currentChatId);
 
-if(sendBtn) sendBtn.addEventListener("click", sendMsg);
-if(msgInput) msgInput.addEventListener("keypress", (e) => {
-  if(e.key === 'Enter') sendMsg();
-});
-
-async function sendMsg() {
-  const txt = msgInput.value.trim();
-  if(!txt || !currentChatId) return;
-  msgInput.value = "";
+  const inp = document.getElementById("msgInput");
+  const txt = inp.value.trim();
   
+  // 2. Validation
+  if(!currentChatId) {
+    alert("Error: No chat partner selected. Close chat and reopen.");
+    return;
+  }
+  if(!txt) return;
+  
+  inp.value = "";
   const box = document.getElementById("messageArea");
   const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  
+  // 3. Optimistic UI
   box.innerHTML += `<div class="msg out" style="opacity:0.7">${txt} <span class="msg-time">${time}</span></div>`;
   box.scrollTop = box.scrollHeight;
   
+  // 4. API Call
   try {
-    await fetch('/api/chat', {
+    const req = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sender_id: u.id, receiver_id: currentChatId, text: txt })
     });
-    loadMessages();
-  } catch(e) {}
-}
-
-// --- TEMPORARY TOOL: FAKE USER GENERATOR ---
-// Isse ek baar run karke delete kar dena
-
-window.createFakeUser = async () => {
-  const fakeId = Math.floor(Math.random() * 1000000);
-  await fetch('/api/syncUser', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      tg_id: fakeId,
-      first_name: "Demo User",
-      username: "demo_" + fakeId,
-      photo_url: "https://cdn-icons-png.flaticon.com/512/149/149071.png"
-    })
-  });
-  alert("Fake User Created! Ab search me 'Demo' likh kar try karein.");
+    
+    if(!req.ok) throw new Error("Send Failed");
+    
+    loadMessages(); // Reload to confirm
+  } catch(e) {
+    console.error(e);
+    alert("Failed to send message. Check internet.");
+  }
 };
-
-// Console me ya button click par ye chalana padega
-// Aasani ke liye, page load hone ke 5 second baad apne aap ek user bana dete hain:
-setTimeout(() => {
-    // Agar aap chahein to is line ko uncomment karein test karne ke liye:
-    // createFakeUser(); 
-}, 5000);
