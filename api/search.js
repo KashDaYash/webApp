@@ -6,7 +6,7 @@ module.exports = async (req, res) => {
   try {
     await connectDB();
     
-    // Frontend se 'query' aur 'myId' dono receive karo
+    // Frontend se 'query' aur 'myId' receive karein
     const { query, myId } = req.query;
 
     if (!query || query.trim() === "") {
@@ -14,10 +14,10 @@ module.exports = async (req, res) => {
     }
 
     const searchCondition = {
-      // 1. Khud ko exclude karo (Not Equal to myId)
+      // Logic: Meri ID ko chhod kar baaki sab dhundo
       tg_id: { $ne: myId },
       
-      // 2. Naam ya Username match karo
+      // Naam ya Username match karo
       $or: [
         { username: { $regex: query, $options: 'i' } },
         { first_name: { $regex: query, $options: 'i' } }
@@ -31,7 +31,7 @@ module.exports = async (req, res) => {
     res.json(users);
     
   } catch (error) {
-    console.error("Search API Error:", error);
+    console.error("Search Error:", error);
     res.status(500).json([]);
   }
 };
