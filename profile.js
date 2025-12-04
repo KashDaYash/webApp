@@ -44,11 +44,11 @@ window.onload = () => {
   })
   .then(res => res.json())
   .then(data => {
-      console.log("Sync Success:", data);
-      // alert("User Synced: " + u.first_name); // Testing ke liye uncomment karein
+      // console.log("Sync Success:", data);
+      alert("User Synced: " + u.first_name); // Testing ke liye uncomment karein
   })
   .catch(err => {
-      console.error("Sync Failed:", err);
+      //console.error("Sync Failed:", err);
       alert("Database Error: Check Vercel Logs");
   });
 
