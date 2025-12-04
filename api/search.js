@@ -5,24 +5,31 @@ const { User } = require('./lib/models');
 module.exports = async (req, res) => {
   try {
     await connectDB();
-    const { query } = req.query;
+    
+    // Frontend se 'query' aur 'myId' dono receive karo
+    const { query, myId } = req.query;
 
-    // Agar query khali hai ya undefined hai, toh empty array bhejo
     if (!query || query.trim() === "") {
       return res.json([]);
     }
 
-    // "Regex" search: Naam ya Username mein kahin bhi match kare (Case Insensitive)
-    const users = await User.find({
+    const searchCondition = {
+      // 1. Khud ko exclude karo (Not Equal to myId)
+      tg_id: { $ne: myId },
+      
+      // 2. Naam ya Username match karo
       $or: [
         { username: { $regex: query, $options: 'i' } },
-        { first_name: { $regex: query, $options: 'i' } } // Ab beech ka naam bhi search hoga
+        { first_name: { $regex: query, $options: 'i' } }
       ]
-    })
-    .select('tg_id first_name username photo_url') // Sirf zaroori data lo
-    .limit(20); // Max 20 results
+    };
+
+    const users = await User.find(searchCondition)
+      .select('tg_id first_name username photo_url')
+      .limit(20);
 
     res.json(users);
+    
   } catch (error) {
     console.error("Search API Error:", error);
     res.status(500).json([]);
