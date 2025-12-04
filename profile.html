@@ -29,7 +29,6 @@
         </div>
 
         <h2 id="userName">Loading...</h2>
-        <span id="userPremium" class="tag premium hidden"></span>
         
         <div class="stats-row">
            <div class="stat-item">
@@ -56,42 +55,38 @@
     </section>
 
     <section id="tab-chat" class="page">
-      <div class="page-header">
-        <h2>Messages</h2>
-      </div>
+      <div class="page-header"><h2>Messages</h2></div>
       
       <div class="search-sticky">
         <div class="search-input-wrapper">
           <span class="material-icons-round">search</span>
           <input type="text" id="userSearch" placeholder="Search users..." autocomplete="off">
-          <span id="searchLoader" class="material-icons-round spin hidden">sync</span>
         </div>
       </div>
 
       <div id="suggestionList" class="user-list"></div>
-
-      <div id="recentChatsList" class="user-list">
-        </div>
+      <div id="recentChatsList" class="user-list"></div>
       
       <div id="emptyChatState" class="empty-state hidden">
         <span class="material-icons-round">forum</span>
-        <p>No chats yet. Search to start!</p>
+        <p>No chats yet</p>
+      </div>
+    </section>
+
+    <section id="tab-notif" class="page">
+      <div class="page-header"><h2>Notifications</h2></div>
+      
+      <div class="empty-state" style="margin-top: 50px;">
+        <span class="material-icons-round" style="font-size: 4rem; opacity: 0.2;">notifications_none</span>
+        <p style="opacity: 0.6;">No new notifications</p>
       </div>
     </section>
 
     <section id="tab-settings" class="page">
       <div class="page-header"><h2>Settings</h2></div>
       <div class="menu-list">
-        <div class="menu-row" onclick="toggleTheme()">
-          <div class="row-left">
-            <span class="material-icons-round">palette</span> Appearance
-          </div>
-          <div class="row-right">
-            <span id="themeLabel">Dark</span>
-          </div>
-        </div>
-        <div class="menu-row">
-          <div class="row-left"><span class="material-icons-round">notifications</span> Notifications</div>
+        <div class="menu-row" onclick="document.getElementById('themeToggle').click()">
+          <div class="row-left"><span class="material-icons-round">palette</span> Appearance</div>
         </div>
         <div class="menu-row danger" onclick="Telegram.WebApp.close()">
            <div class="row-left"><span class="material-icons-round">logout</span> Close App</div>
@@ -107,6 +102,9 @@
     </div>
     <div class="nav-item" onclick="switchTab('tab-chat', this)">
       <span class="material-icons-round">chat_bubble</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('tab-notif', this)">
+      <span class="material-icons-round">notifications</span>
     </div>
     <div class="nav-item" onclick="switchTab('tab-settings', this)">
       <span class="material-icons-round">settings</span>
