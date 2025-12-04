@@ -1,78 +1,55 @@
-// Command: profile.js
 const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// --- SETUP ---
+// --- CONFIGURATION ---
 const root = document.documentElement;
 let currentTheme = localStorage.getItem("theme") || "dark";
 applyTheme(currentTheme);
 
-// --- TELEGRAM DATA CHECK ---
-// Real Telegram Data
+// --- USER DATA ---
 const u = tg.initDataUnsafe?.user;
-
 let currentChatId = null;
 let chatPoll = null;
 
-// --- INIT LOGIC ---
+// --- INITIALIZATION ---
 window.onload = () => {
-  const loader = document.getElementById("loadingScreen");
   const gate = document.getElementById("loginGate");
   const app = document.getElementById("app");
   const nav = document.getElementById("bottomNav");
+  const loader = document.getElementById("loadingScreen");
 
-  // 1. CHECK: ARE WE IN TELEGRAM?
-  // Agar u (user) undefined hai, matlab browser me hain
+  // 1. Check: Are we in Telegram?
   if (!u || !u.id) {
     if(loader) loader.style.display = "none";
-    if(gate) gate.classList.remove("hidden"); // Show Login Gate
-    if(app) app.classList.add("hidden"); // Hide App
-    return; // STOP EXECUTION HERE
+    if(gate) gate.classList.remove("hidden");
+    if(app) app.classList.add("hidden");
+    return;
   }
 
-  // 2. IF TELEGRAM: SHOW APP
+  // 2. Show App
   if(gate) gate.classList.add("hidden");
   if(app) app.classList.remove("hidden");
   if(nav) nav.classList.remove("hidden");
 
-  // Sync User Logic
+  // 3. Sync User to DB
   fetch('/api/syncUser', { 
     method: 'POST', 
     headers: {'Content-Type': 'application/json'}, 
     body: JSON.stringify(u) 
-  })
-  .then(async (res) => {
-    if (!res.ok) {
-      const errData = await res.json();
-      throw new Error(errData.details || "Unknown Server Error");
-    }
-    return res.json();
-  })
-  .then(data => {
-    console.log("Sync Success:", data);
-    // Agar ye alert aaya matlab DB save ho gaya
-    // alert("✅ Data Saved to MongoDB!"); 
-  })
-  .catch(err => {
-    // Agar ye alert aaya toh photo bhejna
-    alert("❌ Sync Failed: " + err.message);
-  });
+  }).catch(console.error);
 
-
-
-  // 4. Fill UI
+  // 4. Update Profile UI
   if(document.getElementById("userName")) {
       document.getElementById("userName").textContent = u.first_name;
       document.getElementById("userHandle").textContent = u.username ? "@"+u.username : "—";
       document.getElementById("userId").textContent = u.id;
-      document.getElementById("userAvatar").src = u.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+      if(u.photo_url) document.getElementById("userAvatar").src = u.photo_url;
   }
 
-  setTimeout(() => {
-    if(loader) loader.style.display = "none";
-  }, 500);
+  setTimeout(() => { if(loader) loader.style.display = "none"; }, 500);
 
+  // 5. Load Chats
   loadRecentChats();
 };
 
@@ -84,8 +61,9 @@ window.switchTab = (tabId, navEl) => {
   const target = document.getElementById(tabId);
   if(target) target.classList.add('active-page');
   if(navEl) navEl.classList.add('active');
-  
-  if (tabId === 'tab-chat') {
+
+  if(tabId === 'tab-chat') {
+    // Reset Search
     const inp = document.getElementById("userSearch");
     if(inp) inp.value = "";
     document.getElementById("suggestionList").innerHTML = "";
@@ -98,67 +76,66 @@ window.toggleTheme = () => {
   currentTheme = currentTheme === "dark" ? "light" : "dark";
   localStorage.setItem("theme", currentTheme);
   applyTheme(currentTheme);
-}
+};
 
-function applyTheme(theme) {
-  const btn = document.querySelector("#themeToggle span");
-  if (theme === "light") {
-    root.classList.add("light-theme");
-    tg.setHeaderColor("#f3f4f6");
-    tg.setBackgroundColor("#f3f4f6");
+function applyTheme(t) {
+  const btn = document.querySelector(".theme-btn-float span");
+  if(t === 'light') {
+    root.classList.add('light-theme');
+    tg.setHeaderColor('#f3f4f6'); tg.setBackgroundColor('#f3f4f6');
     if(btn) btn.textContent = "light_mode";
   } else {
-    root.classList.remove("light-theme");
-    tg.setHeaderColor("#0f0f0f");
-    tg.setBackgroundColor("#0f0f0f");
+    root.classList.remove('light-theme');
+    tg.setHeaderColor('#0f0f0f'); tg.setBackgroundColor('#0f0f0f');
     if(btn) btn.textContent = "dark_mode";
   }
 }
 
-// --- SEARCH ---
-const searchInput = document.getElementById("userSearch");
-let searchTimer;
+// --- SEARCH SYSTEM ---
+const sInput = document.getElementById("userSearch");
+let sTimer;
 
-if(searchInput) {
-    searchInput.addEventListener("input", (e) => {
-      const val = e.target.value.trim();
-      const rec = document.getElementById("recentChatsList");
-      const sug = document.getElementById("suggestionList");
-      
-      if (!val) {
-        sug.innerHTML = "";
-        if(rec) rec.classList.remove("hidden");
-        return;
-      }
-      
-      if(rec) rec.classList.add("hidden");
-      
-      clearTimeout(searchTimer);
-      searchTimer = setTimeout(() => performSearch(val), 300);
-    });
+if(sInput) {
+  sInput.addEventListener("input", (e) => {
+    const val = e.target.value.trim();
+    const rec = document.getElementById("recentChatsList");
+    const sug = document.getElementById("suggestionList");
+
+    if(!val) {
+      sug.innerHTML = "";
+      if(rec) rec.classList.remove("hidden");
+      return;
+    }
+    if(rec) rec.classList.add("hidden");
+    
+    clearTimeout(sTimer);
+    sTimer = setTimeout(() => doSearch(val), 300);
+  });
 }
 
-async function performSearch(query) {
+async function doSearch(query) {
   const sug = document.getElementById("suggestionList");
-  sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.6;">Searching...</div>`;
-
+  sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.6">Searching...</div>`;
+  
   try {
-    // Check u.id exists before searching
-    if(!u || !u.id) return;
-
     const res = await fetch(`/api/search?query=${query}&myId=${u.id}`);
     const rawData = await res.json();
     
-    // FAIL-SAFE: Filter out self
+    // Filter self out
     const data = rawData.filter(user => Number(user.tg_id) !== Number(u.id));
 
-    if (data.length === 0) {
-      sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5;">No users found</div>`;
+    if(data.length === 0) {
+      sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5">No users found</div>`;
       return;
     }
 
+    // FIX: Using data attributes instead of function arguments
     sug.innerHTML = data.map(usr => `
-      <div class="user-item" onclick="openChatRoom(${usr.tg_id}, '${usr.first_name}', '${usr.photo_url}')">
+      <div class="user-item" 
+           onclick="openChat(this)" 
+           data-id="${usr.tg_id}" 
+           data-name="${usr.first_name}" 
+           data-photo="${usr.photo_url || ''}">
         <img src="${usr.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}">
         <div style="flex:1">
            <div style="font-weight:600">${usr.first_name}</div>
@@ -167,114 +144,119 @@ async function performSearch(query) {
         <span class="material-icons-round" style="color:var(--accent)">chat</span>
       </div>
     `).join('');
-  } catch (e) {
-    console.error(e);
-    sug.innerHTML = "Error";
-  }
+  } catch(e) { sug.innerHTML = "Error searching"; }
 }
 
 // --- RECENT CHATS ---
 async function loadRecentChats() {
   const list = document.getElementById("recentChatsList");
   const empty = document.getElementById("emptyChatState");
-  
-  if(!list || !u || !u.id) return;
+  if(!list) return;
 
   try {
     const res = await fetch(`/api/chat?type=list&myId=${u.id}`);
     const users = await res.json();
     
-    list.innerHTML = ""; 
-    
-    if (!users || users.length === 0) {
+    list.innerHTML = "";
+    if(!users || users.length === 0) {
       if(empty) empty.classList.remove("hidden");
       return;
     }
-
     if(empty) empty.classList.add("hidden");
     list.classList.remove("hidden");
 
+    // FIX: Using data attributes here too
     list.innerHTML = users.map(usr => `
-      <div class="user-item" onclick="openChatRoom(${usr.tg_id}, '${usr.first_name}', '${usr.photo_url}')">
+      <div class="user-item" 
+           onclick="openChat(this)" 
+           data-id="${usr.tg_id}" 
+           data-name="${usr.first_name}" 
+           data-photo="${usr.photo_url || ''}">
         <img src="${usr.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}">
         <div style="flex:1">
-           <div style="font-weight:600;">${usr.first_name}</div>
-           <div style="font-size:0.8rem; opacity:0.6;">Tap to chat</div>
+           <div style="font-weight:600">${usr.first_name}</div>
+           <div style="font-size:0.8rem; opacity:0.6">Tap to chat</div>
         </div>
       </div>
     `).join('');
-  } catch (e) {}
+  } catch(e){}
 }
 
-// --- CHAT ROOM ---
-window.openChatRoom = (id, name, photo) => {
+// --- CHAT LOGIC (THE FIX) ---
+// Ab ye function 'element' lega, parameters nahi
+window.openChat = (el) => {
+  // Read data from the clicked element
+  const id = el.getAttribute("data-id");
+  const name = el.getAttribute("data-name");
+  const photo = el.getAttribute("data-photo");
+
+  if(!id) return;
+
   currentChatId = Number(id);
   
+  // Update UI
   document.getElementById("chatPartnerName").textContent = name;
   document.getElementById("chatPartnerImg").src = photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   
+  // Show Overlay
   const overlay = document.getElementById("chatRoom");
   overlay.classList.add("open");
   
+  // Handle Back Button
   tg.BackButton.show();
-  tg.BackButton.onClick(closeChatRoom);
-  
-  loadMessages();
+  tg.BackButton.onClick(closeChat);
+
+  // Load Messages
+  loadMsgs();
   if(chatPoll) clearInterval(chatPoll);
-  chatPoll = setInterval(loadMessages, 3000);
+  chatPoll = setInterval(loadMsgs, 3000);
 };
 
-window.closeChatRoom = () => {
+window.closeChat = () => {
   document.getElementById("chatRoom").classList.remove("open");
   tg.BackButton.hide();
   clearInterval(chatPoll);
   currentChatId = null;
-  loadRecentChats();
+  loadRecentChats(); // Refresh list to update latest msg order
 };
 
-async function loadMessages() {
-  if (!currentChatId || !u || !u.id) return;
+async function loadMsgs() {
+  if(!currentChatId) return;
   try {
     const res = await fetch(`/api/chat?u1=${u.id}&u2=${currentChatId}`);
     const msgs = await res.json();
     const box = document.getElementById("messageArea");
     
-    const isAtBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 150;
+    // Auto Scroll logic
+    const isBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 150;
     
     box.innerHTML = msgs.map(m => {
-      const time = new Date(m.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-      return `
-        <div class="msg ${m.sender_id == u.id ? 'out' : 'in'}">
-          ${m.text} <span class="msg-time">${time}</span>
-        </div>`;
+      const t = new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      return `<div class="msg ${m.sender_id == u.id ? 'out' : 'in'}">${m.text}<span class="msg-time">${t}</span></div>`;
     }).join('');
-    
-    if(isAtBottom || msgs.length < 5) box.scrollTop = box.scrollHeight;
-  } catch(e) {}
+
+    if(isBottom || msgs.length < 5) box.scrollTop = box.scrollHeight;
+  } catch(e){}
 }
 
 // --- SEND MESSAGE ---
 window.sendMsg = async () => {
   const inp = document.getElementById("msgInput");
   const txt = inp.value.trim();
-  
-  if(!currentChatId || !txt || !u || !u.id) return;
-  
+  if(!txt || !currentChatId) return;
+
   inp.value = "";
   const box = document.getElementById("messageArea");
-  const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   
-  box.innerHTML += `<div class="msg out" style="opacity:0.7">${txt} <span class="msg-time">${time}</span></div>`;
+  // Optimistic UI
+  box.innerHTML += `<div class="msg out" style="opacity:0.7">${txt}<span class="msg-time">${t}</span></div>`;
   box.scrollTop = box.scrollHeight;
-  
-  try {
-    await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sender_id: u.id, receiver_id: currentChatId, text: txt })
-    });
-    loadMessages();
-  } catch(e) {
-    alert("Failed to send.");
-  }
+
+  await fetch('/api/chat', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({sender_id: u.id, receiver_id: currentChatId, text: txt})
+  });
+  loadMsgs();
 };
