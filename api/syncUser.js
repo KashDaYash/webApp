@@ -1,6 +1,17 @@
 const mongoose = require('mongoose');
 
-// Schema Definition
+// DB Connection (Cache system ke sath taaki bar-bar connect na ho)
+let isConnected = false;
+const connectToMongo = async () => {
+  if (isConnected) return;
+  if (mongoose.connection.readyState >= 1) {
+    isConnected = true;
+    return;
+  }
+  await mongoose.connect(process.env.MONGO_URI);
+  isConnected = true;
+};
+
 const UserSchema = new mongoose.Schema({
   tg_id: { type: Number, required: true, unique: true },
   username: String,
@@ -9,52 +20,39 @@ const UserSchema = new mongoose.Schema({
   last_seen: { type: Date, default: Date.now }
 });
 
-// Model (Singleton pattern for Serverless)
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 
 module.exports = async (req, res) => {
-  // 1. Check if Env Var exists
-  if (!process.env.MONGO_URI) {
-    return res.status(500).json({ 
-      error: "Config Error", 
-      details: "MONGO_URI variable Vercel me nahi mila!" 
-    });
-  }
-
   try {
-    // 2. Connection Attempt
-    if (mongoose.connection.readyState === 0) {
-      console.log("Connecting to MongoDB...");
-      // Timeout settings add ki hain taaki jaldi error dikhe
-      await mongoose.connect(process.env.MONGO_URI, {
-        serverSelectionTimeoutMS: 5000 
-      });
-      console.log("Connected!");
+    await connectToMongo();
+
+    // --- FIX: Data Mapping ---
+    // Telegram bhejta hai 'id', humara DB chahta hai 'tg_id'
+    const body = req.body;
+    const userId = body.tg_id || body.id; // Dono check karo
+
+    if (!userId) {
+       console.log("Validation Failed: No ID found in body", body);
+       return res.status(400).json({ error: "User ID missing" });
     }
 
-    // 3. Data Saving
-    const { tg_id, username, first_name, photo_url } = req.body;
-    
-    if (!tg_id) {
-       return res.status(400).json({ error: "Validation Error", details: "User ID missing" });
-    }
-
+    // Upsert User
     const user = await User.findOneAndUpdate(
-      { tg_id: tg_id },
-      { tg_id, username, first_name, photo_url, last_seen: new Date() },
+      { tg_id: userId },
+      { 
+        tg_id: userId, 
+        username: body.username, 
+        first_name: body.first_name, 
+        photo_url: body.photo_url, 
+        last_seen: new Date() 
+      },
       { upsert: true, new: true }
     );
     
-    // Success Response
     res.status(200).json(user);
 
   } catch (error) {
-    console.error("DB Connection Error:", error);
-    
-    // Yahan hum asli error bhej rahe hain frontend ko
-    res.status(500).json({ 
-      error: "DB Connection Failed", 
-      details: error.message // Ye line screen par error print karegi
-    });
+    console.error("Sync Error:", error);
+    res.status(500).json({ error: error.message });
   }
 };
