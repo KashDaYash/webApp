@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>Your Profile</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+  <title>Profile</title>
+  
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.10.2/lottie.min.js"></script>
-  <link rel="stylesheet" href="profile.css"/>
+  
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+  <link rel="stylesheet" href="profile.css"/>
 </head>
 
 <body>
@@ -21,15 +23,18 @@
     
     <div class="profile-card">
       <button id="themeToggle" class="theme-toggle">🌙</button>
+
       <div class="profile-header">
         <div class="avatar-wrapper">
           <div id="lottie" class="lottie-glow"></div>
           <img id="userAvatar" class="avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png"/>
         </div>
+
         <h2 id="userName">Guest</h2>
         <span id="userPremium" class="tag premium hidden"></span>
         <span id="userLanguage" class="tag language"></span>
       </div>
+
       <div class="profile-body">
         <div class="info copyable"><strong>ID:</strong> <span id="userId">—</span></div>
         <div class="info copyable"><strong>Username:</strong> <span id="userHandle">—</span></div>
@@ -41,6 +46,7 @@
         <h3>Options</h3>
         <button id="menuToggle" class="menu-toggle">▼</button>
       </div>
+
       <div id="menuBody" class="menu-body">
         <div class="menu-item highlight-item" onclick="openChatInterface()">
           💬 Messages / Search
@@ -55,31 +61,39 @@
     
     <div id="chatListView" class="chat-view">
       <div class="chat-header">
-        <button class="back-icon" onclick="closeChatInterface()">←</button>
+        <button class="back-icon" onclick="closeChatInterface()">
+          <span class="material-icons-round">arrow_back</span>
+        </button>
         <h3>Chats</h3>
       </div>
       
       <div class="search-wrapper">
         <span class="material-icons-round">search</span>
-        <input type="text" id="userSearch" placeholder="Search by name or username..." autocomplete="off">
+        <input type="text" id="userSearch" placeholder="Search user..." autocomplete="off">
       </div>
 
       <div id="suggestionList" class="suggestion-list"></div>
       
-      <div class="recent-chats-label">Recent</div>
-      <div id="chatHistoryList" class="chat-history">
-        </div>
+      <div style="padding: 20px; text-align: center; color: gray; font-size: 0.9rem;">
+        Search for a user to start chatting
+      </div>
     </div>
 
     <div id="chatRoomView" class="chat-view hidden">
       <div class="chat-header">
-        <button class="back-icon" onclick="backToChatList()">←</button>
+        <button class="back-icon" onclick="backToChatList()">
+          <span class="material-icons-round">arrow_back</span>
+        </button>
         <h3 id="chatPartnerName">User</h3>
       </div>
+      
       <div id="messageArea" class="message-area"></div>
+      
       <div class="input-area">
         <input type="text" id="msgInput" placeholder="Message..."/>
-        <button id="sendBtn" class="send-btn">➤</button>
+        <button id="sendBtn" class="send-btn">
+          <span class="material-icons-round">send</span>
+        </button>
       </div>
     </div>
 
@@ -88,4 +102,3 @@
   <script src="profile.js"></script>
 </body>
 </html>
- 
