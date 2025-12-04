@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
-  <title>Profile</title>
+  <title>WebApp</title>
   
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.10.2/lottie.min.js"></script>
@@ -16,87 +16,116 @@
 
   <div id="loadingScreen">
     <div class="progress-wrapper"><div id="progressBar" class="progress-bar"></div></div>
-    <div id="progressText" class="progress-text">0%</div>
   </div>
 
-  <div class="container" id="mainContainer">
+  <main id="app">
     
-    <div class="profile-card">
-      <button id="themeToggle" class="theme-toggle">🌙</button>
-
-      <div class="profile-header">
+    <section id="tab-profile" class="page active-page">
+      <div class="profile-card">
+        <button id="themeToggle" class="theme-toggle">🌙</button>
+        
         <div class="avatar-wrapper">
           <div id="lottie" class="lottie-glow"></div>
-          <img id="userAvatar" class="avatar" src="https://cdn-icons-png.flaticon.com/512/149/149071.png"/>
+          <img id="userAvatar" class="avatar" src=""/>
         </div>
 
-        <h2 id="userName">Guest</h2>
+        <h2 id="userName">Loading...</h2>
         <span id="userPremium" class="tag premium hidden"></span>
-        <span id="userLanguage" class="tag language"></span>
-      </div>
-
-      <div class="profile-body">
-        <div class="info copyable"><strong>ID:</strong> <span id="userId">—</span></div>
-        <div class="info copyable"><strong>Username:</strong> <span id="userHandle">—</span></div>
-      </div>
-    </div>
-
-    <div class="menu-card">
-      <div class="menu-header">
-        <h3>Options</h3>
-        <button id="menuToggle" class="menu-toggle">▼</button>
-      </div>
-
-      <div id="menuBody" class="menu-body">
-        <div class="menu-item highlight-item" onclick="openChatInterface()">
-          💬 Messages / Search
+        
+        <div class="stats-row">
+           <div class="stat-item">
+             <span class="stat-val">0</span>
+             <span class="stat-label">Friends</span>
+           </div>
+           <div class="stat-item">
+             <span class="stat-val" id="userLanguage">EN</span>
+             <span class="stat-label">Lang</span>
+           </div>
         </div>
-        <div class="menu-item">⚙ Settings</div>
-        <div class="menu-item">🎨 Theme Customizer</div>
-      </div>
-    </div>
-  </div>
 
-  <div id="chatOverlay" class="chat-overlay hidden">
-    
-    <div id="chatListView" class="chat-view">
-      <div class="chat-header">
-        <button class="back-icon" onclick="closeChatInterface()">
-          <span class="material-icons-round">arrow_back</span>
-        </button>
-        <h3>Chats</h3>
+        <div class="profile-body">
+           <div class="info-box">
+             <span class="material-icons-round icon">fingerprint</span>
+             <span id="userId" class="text-val">...</span>
+           </div>
+           <div class="info-box">
+             <span class="material-icons-round icon">alternate_email</span>
+             <span id="userHandle" class="text-val">...</span>
+           </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-chat" class="page">
+      <div class="page-header">
+        <h2>Messages</h2>
+        <span class="material-icons-round action-icon">edit_note</span>
       </div>
       
-      <div class="search-wrapper">
-        <span class="material-icons-round">search</span>
-        <input type="text" id="userSearch" placeholder="Search user..." autocomplete="off">
+      <div class="search-bar-container">
+        <div class="search-input-wrapper">
+          <span class="material-icons-round">search</span>
+          <input type="text" id="userSearch" placeholder="Search" autocomplete="off">
+        </div>
       </div>
 
-      <div id="suggestionList" class="suggestion-list"></div>
+      <div id="suggestionList" class="user-list"></div>
       
-      <div style="padding: 20px; text-align: center; color: gray; font-size: 0.9rem;">
-        Search for a user to start chatting
+      <div id="emptyChatState" class="empty-state">
+        <span class="material-icons-round">forum</span>
+        <p>Search for a username to start chatting</p>
       </div>
-    </div>
+    </section>
 
-    <div id="chatRoomView" class="chat-view hidden">
-      <div class="chat-header">
-        <button class="back-icon" onclick="backToChatList()">
-          <span class="material-icons-round">arrow_back</span>
-        </button>
+    <section id="tab-settings" class="page">
+      <div class="page-header"><h2>Settings</h2></div>
+      <div class="menu-list">
+        <div class="menu-row">
+          <span class="material-icons-round">palette</span> Theme Customizer
+        </div>
+        <div class="menu-row">
+          <span class="material-icons-round">notifications</span> Notifications
+        </div>
+        <div class="menu-row">
+           <span class="material-icons-round">logout</span> Close App
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <div class="nav-item active" onclick="switchTab('tab-profile', this)">
+      <span class="material-icons-round">person</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('tab-chat', this)">
+      <span class="material-icons-round">chat_bubble</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('tab-settings', this)">
+      <span class="material-icons-round">settings</span>
+    </div>
+  </nav>
+
+  <div id="chatRoom" class="chat-room-overlay">
+    <div class="chat-room-header">
+      <button class="back-btn" onclick="closeChatRoom()">
+        <span class="material-icons-round">arrow_back_ios</span>
+      </button>
+      <div class="header-info">
         <h3 id="chatPartnerName">User</h3>
+        <span class="status">Online</span>
       </div>
-      
-      <div id="messageArea" class="message-area"></div>
-      
-      <div class="input-area">
-        <input type="text" id="msgInput" placeholder="Message..."/>
-        <button id="sendBtn" class="send-btn">
-          <span class="material-icons-round">send</span>
-        </button>
-      </div>
+      <img id="chatPartnerImg" src="" class="header-avatar">
     </div>
 
+    <div id="messageArea" class="messages-container"></div>
+
+    <div class="chat-input-bar">
+      <input type="text" id="msgInput" placeholder="Message..." autocomplete="off">
+      <button id="sendBtn" class="send-fab">
+        <span class="material-icons-round">arrow_upward</span>
+      </button>
+    </div>
   </div>
 
   <script src="profile.js"></script>
