@@ -42,3 +42,47 @@ A modern, high-performance **Telegram Mini App** featuring a Glassmorphism UI, R
 ├── profile.js            # Frontend Logic (SPA, API calls)
 ├── vercel.json           # Vercel Configuration
 └── README.md             # Documentation
+
+🚀 Getting Started
+Prerequisites
+ * Node.js installed.
+ * A MongoDB Atlas account.
+ * A Vercel account.
+1. Clone the Repository
+git clone [https://github.com/your-username/your-repo-name.git](https://github.com/your-username/your-repo-name.git)
+cd your-repo-name
+
+2. Install Dependencies
+Initialize npm and install Mongoose (required for backend).
+npm init -y
+npm install mongoose
+
+3. Setup Environment Variables
+Create a .env file in the root (for local development) or set these in your Vercel Dashboard.
+MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/?retryWrites=true&w=majority
+BOT_TOKEN=your_telegram_bot_token
+
+4. Local Development (using Vercel CLI)
+To run the serverless functions locally:
+npm i -g vercel
+vercel dev
+
+📦 Deployment
+This project is optimized for Vercel.
+ * Push your code to GitHub.
+ * Go to Vercel Dashboard and Add New Project.
+ * Import your GitHub repository.
+ * In the Settings > Environment Variables section, add:
+   * MONGO_URI
+   * BOT_TOKEN
+ * Click Deploy.
+🔌 API Endpoints
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | /api/syncUser | Saves or updates Telegram user data in DB. |
+| GET | /api/search | Search users (Requires query & myId). |
+| GET | /api/chat | Fetch chat history (Requires u1 & u2) or List (type=list). |
+| POST | /api/chat | Send a new message. |
+🛡 License
+This project is open-source and available under the MIT License.
+Made with ❤️ for Telegram Mini Apps
