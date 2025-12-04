@@ -36,21 +36,29 @@ window.onload = () => {
   if(app) app.classList.remove("hidden");
   if(nav) nav.classList.remove("hidden");
 
-  // 3. Sync User (Sirf tabhi jab asli user ho)
+  // Sync User Logic
   fetch('/api/syncUser', { 
     method: 'POST', 
     headers: {'Content-Type': 'application/json'}, 
     body: JSON.stringify(u) 
   })
-  .then(res => res.json())
+  .then(async (res) => {
+    if (!res.ok) {
+      const errData = await res.json();
+      throw new Error(errData.details || "Unknown Server Error");
+    }
+    return res.json();
+  })
   .then(data => {
-      // console.log("Sync Success:", data);
-      alert("User Synced: " + u.first_name); // Testing ke liye uncomment karein
+    console.log("Sync Success:", data);
+    // Agar ye alert aaya matlab DB save ho gaya
+    // alert("✅ Data Saved to MongoDB!"); 
   })
   .catch(err => {
-      //console.error("Sync Failed:", err);
-      alert("Database Error: Check Vercel Logs");
+    // Agar ye alert aaya toh photo bhejna
+    alert("❌ Sync Failed: " + err.message);
   });
+
 
 
   // 4. Fill UI
