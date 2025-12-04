@@ -19,7 +19,7 @@
     
     <section id="tab-profile" class="page active-page">
       <div class="profile-card">
-        <button id="themeToggle" class="theme-btn-float">
+        <button id="themeToggle" class="theme-btn-float" onclick="toggleTheme()">
           <span class="material-icons-round">dark_mode</span>
         </button>
 
@@ -75,7 +75,6 @@
 
     <section id="tab-notif" class="page">
       <div class="page-header"><h2>Notifications</h2></div>
-      
       <div class="empty-state" style="margin-top: 50px;">
         <span class="material-icons-round" style="font-size: 4rem; opacity: 0.2;">notifications_none</span>
         <p style="opacity: 0.6;">No new notifications</p>
@@ -85,7 +84,7 @@
     <section id="tab-settings" class="page">
       <div class="page-header"><h2>Settings</h2></div>
       <div class="menu-list">
-        <div class="menu-row" onclick="document.getElementById('themeToggle').click()">
+        <div class="menu-row" onclick="toggleTheme()">
           <div class="row-left"><span class="material-icons-round">palette</span> Appearance</div>
         </div>
         <div class="menu-row danger" onclick="Telegram.WebApp.close()">
@@ -126,8 +125,8 @@
     <div id="messageArea" class="messages-container"></div>
 
     <div class="chat-input-bar">
-      <input type="text" id="msgInput" placeholder="Message..." autocomplete="off">
-      <button id="sendBtn" class="send-fab">
+      <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
+      <button id="sendBtn" class="send-fab" onclick="sendMsg()">
         <span class="material-icons-round">send</span>
       </button>
     </div>
