@@ -41,7 +41,17 @@ window.onload = () => {
     method: 'POST', 
     headers: {'Content-Type': 'application/json'}, 
     body: JSON.stringify(u) 
-  }).catch(console.error);
+  })
+  .then(res => res.json())
+  .then(data => {
+      console.log("Sync Success:", data);
+      // alert("User Synced: " + u.first_name); // Testing ke liye uncomment karein
+  })
+  .catch(err => {
+      console.error("Sync Failed:", err);
+      alert("Database Error: Check Vercel Logs");
+  });
+
 
   // 4. Fill UI
   if(document.getElementById("userName")) {
