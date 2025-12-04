@@ -42,6 +42,7 @@ A modern, high-performance **Telegram Mini App** featuring a Glassmorphism UI, R
 ├── profile.js            # Frontend Logic (SPA, API calls)
 ├── vercel.json           # Vercel Configuration
 └── README.md             # Documentation
+```
 
 🚀 Getting Started
 Prerequisites
