@@ -15,7 +15,19 @@
     <div class="progress-wrapper"><div id="progressBar" class="progress-bar"></div></div>
   </div>
 
-  <main id="app">
+  <div id="loginGate" class="login-gate hidden">
+    <div class="gate-content">
+      <div class="gate-icon">🚀</div>
+      <h1>Welcome to WebApp</h1>
+      <p>This app is designed to work inside Telegram.</p>
+      
+      <a href="https://t.me/ProfileShowXBot/app" class="gate-btn">
+        Open via Telegram
+      </a>
+    </div>
+  </div>
+
+  <main id="app" class="hidden">
     
     <section id="tab-profile" class="page active-page">
       <div class="profile-card">
@@ -28,7 +40,7 @@
           <img id="userAvatar" class="avatar" src=""/>
         </div>
 
-        <h2 id="userName">Loading...</h2>
+        <h2 id="userName">Guest</h2>
         
         <div class="stats-row">
            <div class="stat-item">
@@ -95,7 +107,7 @@
 
   </main>
 
-  <nav class="bottom-nav">
+  <nav id="bottomNav" class="bottom-nav hidden">
     <div class="nav-item active" onclick="switchTab('tab-profile', this)">
       <span class="material-icons-round">person</span>
     </div>
