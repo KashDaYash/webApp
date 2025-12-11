@@ -4,7 +4,7 @@
 :root {
   --bg: #0f0f0f;
   --card-bg: rgba(30, 30, 30, 0.6);
-  --nav-bg: rgba(20, 20, 20, 0.95);
+  --nav-bg: rgba(20, 20, 20, 0.98); /* Solid background for bars */
   --text: #ffffff;
   --text-sec: #aaaaaa;
   --accent: #3b82f6;
@@ -12,13 +12,14 @@
   --border: rgba(255, 255, 255, 0.08);
   --msg-in: #222;
   --msg-out: #3b82f6;
+  --danger: #ef4444; /* Red for Badges */
 }
 
 /* Light Theme Overrides */
 .light-theme {
   --bg: #f3f4f6;
   --card-bg: rgba(255, 255, 255, 0.85);
-  --nav-bg: rgba(255, 255, 255, 0.95);
+  --nav-bg: rgba(255, 255, 255, 0.98);
   --text: #1f2937;
   --text-sec: #6b7280;
   --accent: #2563eb;
@@ -126,6 +127,19 @@ body {
 
 .empty-state { text-align: center; margin-top: 50px; color: var(--text-sec); }
 
+/* --- UNREAD BADGE (NEW) --- */
+.unread-badge {
+  background: var(--danger);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 12px;
+  min-width: 20px;
+  text-align: center;
+  box-shadow: 0 2px 5px rgba(239, 68, 68, 0.4);
+}
+
 /* --- SETTINGS MENU --- */
 .menu-list { display: flex; flex-direction: column; gap: 10px; }
 .menu-row {
@@ -155,35 +169,34 @@ body {
 .nav-item span { font-size: 28px; }
 
 /* =============================================
-   🔥🔥 CRITICAL FIX: CHAT OVERLAY SYSTEM 🔥🔥
-   (Ghost Elements & Visibility Fixed Here)
+   🔥🔥 CHAT OVERLAY SYSTEM (GHOST FIX) 🔥🔥
    =============================================
 */
 
 .chat-room-overlay {
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: var(--bg);
-  z-index: 200; /* Must be higher than Bottom Nav (100) */
+  background: var(--bg); /* Solid Background is critical */
+  z-index: 200; /* Higher than Bottom Nav */
   display: flex; flex-direction: column;
   
-  /* Start off-screen */
+  /* Slide Animation */
   transform: translateX(100%);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   
-  /* HIDES CONTENT WHEN CLOSED (Fixes Ghosting) */
+  /* CRITICAL: Hides element completely when closed */
   visibility: hidden; 
 }
 
 .chat-room-overlay.open {
   transform: translateX(0);
-  visibility: visible; /* Show only when open */
+  visibility: visible;
 }
 
-/* Header inside Overlay (Absolute to stick to overlay, not screen) */
+/* Header inside Overlay (Absolute positioning locks it to overlay) */
 .chat-room-header {
   position: absolute; top: 0; left: 0; width: 100%; height: 60px;
-  background: var(--nav-bg); backdrop-filter: blur(10px);
+  background: var(--nav-bg);
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 10px; padding: 0 10px;
   box-sizing: border-box; z-index: 10;
@@ -192,7 +205,7 @@ body {
 .header-info h3 { margin: 0; font-size: 1rem; color: var(--text); }
 .header-avatar { width: 34px; height: 34px; border-radius: 50%; }
 
-/* Input Bar inside Overlay (Absolute to stick to overlay bottom) */
+/* Input Bar inside Overlay (Absolute positioning locks it to overlay bottom) */
 .chat-input-bar {
   position: absolute; bottom: 0; left: 0; width: 100%;
   padding: 10px; padding-bottom: env(safe-area-inset-bottom);
@@ -214,8 +227,8 @@ body {
 /* Scrollable Messages Area */
 .messages-container {
   flex: 1; overflow-y: auto;
-  /* Top padding = Header Height (60) + Space (10) */
-  /* Bottom padding = Input Height (70) + Space (10) */
+  /* Top padding = Header (60) + Space (10) */
+  /* Bottom padding = Input (70) + Space (10) */
   padding: 70px 15px 80px 15px;
   display: flex; flex-direction: column; gap: 6px;
 }
