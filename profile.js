@@ -8,19 +8,15 @@ let currentTheme = localStorage.getItem("theme") || "dark";
 let customBg = localStorage.getItem("customBg");
 let isGradient = localStorage.getItem("isGradient") === "true";
 
-// Apply Saved Settings Instantly
-if (customBg) {
-  applyCustomBg(customBg, isGradient);
-} else {
-  applyTheme(currentTheme);
-}
+if (customBg) { applyCustomBg(customBg, isGradient); } 
+else { applyTheme(currentTheme); }
 
-// USER
+// USER DATA
 const u = tg.initDataUnsafe?.user;
 let currentChatId = null;
 let chatPoll = null;
+let longPressTimer = null; // Timer for delete menu
 
-// --- INITIALIZATION ---
 window.onload = () => {
   const gate = document.getElementById("loginGate");
   const app = document.getElementById("app");
@@ -38,46 +34,33 @@ window.onload = () => {
   if(app) app.classList.remove("hidden");
   if(nav) nav.classList.remove("hidden");
 
-  // Load Custom Settings into Inputs
+  // Customizer Init
   const bgPicker = document.getElementById("bgPicker");
   const gradCheck = document.getElementById("gradientToggle");
   const colorPreview = document.getElementById("colorPreviewBox");
-  
   if(bgPicker && customBg) {
     bgPicker.value = customBg;
     if(colorPreview) colorPreview.style.backgroundColor = customBg;
   }
   if(gradCheck) gradCheck.checked = isGradient;
 
-  // --- EVENT LISTENERS (INSTANT UPDATE) ---
   if(bgPicker) {
-    // 'input' event triggers while dragging color
     bgPicker.addEventListener("input", (e) => {
       const color = e.target.value;
       const isGrad = document.getElementById("gradientToggle").checked;
-      
-      // Update Preview Box
       if(colorPreview) colorPreview.style.backgroundColor = color;
-      
-      // Update Background Instantly
       applyCustomBg(color, isGrad);
-      
-      // Save
       localStorage.setItem("customBg", color);
     });
   }
-
   if(gradCheck) {
     gradCheck.addEventListener("change", (e) => {
       const color = document.getElementById("bgPicker").value;
-      const isGrad = e.target.checked;
-      
-      applyCustomBg(color, isGrad);
-      localStorage.setItem("isGradient", isGrad);
+      applyCustomBg(color, e.target.checked);
+      localStorage.setItem("isGradient", e.target.checked);
     });
   }
 
-  // Sync DB
   fetch('/api/syncUser', { 
     method: 'POST', 
     headers: {'Content-Type': 'application/json'}, 
@@ -93,15 +76,17 @@ window.onload = () => {
 
   setTimeout(() => { if(loader) loader.style.display = "none"; }, 500);
   loadRecentChats();
+  
+  // Close context menu on click anywhere
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.msg')) removeContextMenu();
+  });
 };
 
-// --- THEME LOGIC ---
 function applyCustomBg(color, gradient) {
   if (gradient) {
-    // Beautiful Gradient: Color -> Dark Black
     root.style.background = `linear-gradient(135deg, ${color} 0%, #000000 100%)`;
   } else {
-    // Solid Color
     root.style.background = color;
   }
   root.style.setProperty('--bg', color);
@@ -110,24 +95,19 @@ function applyCustomBg(color, gradient) {
 window.resetThemeToDefault = () => {
   localStorage.removeItem("customBg");
   localStorage.removeItem("isGradient");
-  root.style.background = ""; // Remove inline style
+  root.style.background = "";
   applyTheme(currentTheme);
-  
-  // Reset UI
   document.getElementById("bgPicker").value = "#0f0f0f";
-  document.getElementById("colorPreviewBox").style.backgroundColor = "#0f0f0f";
   document.getElementById("gradientToggle").checked = false;
-  
-  alert("Restored default theme!");
+  alert("Theme Reset!");
 };
 
 window.toggleTheme = () => {
   if(localStorage.getItem("customBg")) {
-    if(!confirm("Changing Theme will reset your Custom Background. Continue?")) return;
+    if(!confirm("Reset Custom Background?")) return;
     resetThemeToDefault();
     return;
   }
-  
   currentTheme = currentTheme === "dark" ? "light" : "dark";
   localStorage.setItem("theme", currentTheme);
   applyTheme(currentTheme);
@@ -146,13 +126,11 @@ function applyTheme(t) {
   }
 }
 
-// --- NAVIGATION ---
 window.switchTab = (tabId, navEl) => {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(tabId).classList.add('active-page');
   navEl.classList.add('active');
-
   if(tabId === 'tab-chat') {
     document.getElementById("userSearch").value = "";
     document.getElementById("suggestionList").innerHTML = "";
@@ -160,7 +138,6 @@ window.switchTab = (tabId, navEl) => {
   }
 };
 
-// --- SEARCH ---
 const sInput = document.getElementById("userSearch");
 let sTimer;
 if(sInput) {
@@ -194,18 +171,14 @@ async function doSearch(query) {
   } catch(e) { sug.innerHTML = "Error"; }
 }
 
-// --- RECENT CHATS ---
 async function loadRecentChats() {
   const list = document.getElementById("recentChatsList");
   const empty = document.getElementById("emptyChatState");
   if(!list) return;
-
   try {
     const res = await fetch(`/api/chat?type=list&myId=${u.id}`);
     const users = await res.json();
-    if(document.getElementById("friendsCount")) {
-      document.getElementById("friendsCount").textContent = users.length;
-    }
+    if(document.getElementById("friendsCount")) document.getElementById("friendsCount").textContent = users.length;
     list.innerHTML = "";
     if(!users.length) {
       if(empty) empty.classList.remove("hidden");
@@ -221,16 +194,22 @@ function renderUserItem(usr, showBadge = false) {
   const badgeHtml = (showBadge && usr.unread_count > 0) 
     ? `<div class="unread-badge">${usr.unread_count}</div>` 
     : `<span class="material-icons-round" style="color:var(--accent)">chevron_right</span>`;
+  
+  // ADMIN BADGE
+  const adminBadge = usr.is_admin 
+    ? `<span class="material-icons-round verified-badge">verified</span>` 
+    : ``;
 
   return `
     <div class="user-item" 
          onclick="openChat(this)" 
          data-id="${usr.tg_id}" 
          data-name="${usr.first_name}" 
-         data-photo="${usr.photo_url || ''}">
+         data-photo="${usr.photo_url || ''}"
+         data-admin="${usr.is_admin || false}">
       <img src="${usr.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}">
       <div style="flex:1">
-         <div style="font-weight:600">${usr.first_name}</div>
+         <div style="font-weight:600">${usr.first_name} ${adminBadge}</div>
          <div style="font-size:0.8rem; opacity:0.6">
            ${showBadge && usr.unread_count > 0 ? 'New messages' : '@'+(usr.username||'user')}
          </div>
@@ -240,15 +219,19 @@ function renderUserItem(usr, showBadge = false) {
   `;
 }
 
-// --- CHAT LOGIC ---
 window.openChat = async (el) => {
   const id = el.getAttribute("data-id");
   const name = el.getAttribute("data-name");
   const photo = el.getAttribute("data-photo");
+  const isAdmin = el.getAttribute("data-admin") === 'true';
+  
   if(!id) return;
-
   currentChatId = Number(id);
-  document.getElementById("chatPartnerName").textContent = name;
+  
+  // Show Admin Badge in Header
+  const adminIcon = isAdmin ? `<span class="material-icons-round verified-badge" style="font-size:1.1rem;margin-left:5px">verified</span>` : ``;
+  
+  document.getElementById("chatPartnerName").innerHTML = name + adminIcon;
   document.getElementById("chatPartnerImg").src = photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   document.querySelector(".status").textContent = "Connecting...";
 
@@ -299,18 +282,84 @@ async function loadMsgs() {
     }
 
     const box = document.getElementById("messageArea");
+    // Only scroll if already at bottom or first load
     const isBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 150;
     
+    // Check if we are re-rendering to avoid removing context menu
+    if(document.querySelector('.context-menu')) return; 
+
     box.innerHTML = msgs.map(m => {
       const t = new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
       const isMe = m.sender_id == u.id;
       const checks = isMe ? (m.is_read ? '✓✓' : '✓') : '';
-      return `<div class="msg ${isMe ? 'out' : 'in'}">${m.text}<span class="msg-time">${t} <span style="margin-left:3px">${checks}</span></span></div>`;
+      // ADDED: data-msg-id for deletion
+      return `
+        <div class="msg ${isMe ? 'out' : 'in'}" 
+             data-msg-id="${m._id}" 
+             oncontextmenu="showContextMenu(event, this, ${isMe})">
+          ${m.text}
+          <span class="msg-time">${t} <span style="margin-left:3px">${checks}</span></span>
+        </div>`;
     }).join('');
 
     if(isBottom || msgs.length < 5) box.scrollTop = box.scrollHeight;
   } catch(e){}
 }
+
+// --- LONG PRESS / CONTEXT MENU ---
+window.showContextMenu = (e, el, isMe) => {
+  e.preventDefault();
+  removeContextMenu(); // Clear existing
+
+  const menu = document.createElement("div");
+  menu.className = "context-menu";
+  const msgId = el.getAttribute("data-msg-id");
+  const text = el.innerText.split("\n")[0]; // Basic text extraction
+
+  menu.innerHTML = `
+    <div class="ctx-item" onclick="navigator.clipboard.writeText('${text}');removeContextMenu()">
+      <span class="material-icons-round">content_copy</span> Copy
+    </div>
+    ${isMe ? `
+    <div class="ctx-item delete" onclick="deleteMessage('${msgId}', this)">
+      <span class="material-icons-round">delete</span> Delete
+    </div>` : ''}
+  `;
+
+  // Position Menu
+  const rect = el.getBoundingClientRect();
+  menu.style.top = `${rect.top + window.scrollY + 10}px`;
+  // Adjust Left/Right
+  if(isMe) menu.style.right = "20px";
+  else menu.style.left = "20px";
+
+  document.body.appendChild(menu);
+  
+  // Vibration for effect
+  if(window.navigator.vibrate) window.navigator.vibrate(50);
+};
+
+window.removeContextMenu = () => {
+  const menus = document.querySelectorAll(".context-menu");
+  menus.forEach(m => m.remove());
+};
+
+window.deleteMessage = async (msgId) => {
+  removeContextMenu();
+  if(!confirm("Delete this message?")) return;
+
+  // Optimistic Remove
+  const el = document.querySelector(`[data-msg-id="${msgId}"]`);
+  if(el) el.style.display = "none";
+
+  try {
+    await fetch('/api/chat', {
+      method: 'DELETE',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ message_id: msgId, user_id: u.id })
+    });
+  } catch(e) { alert("Failed to delete"); }
+};
 
 window.sendMsg = async () => {
   const inp = document.getElementById("msgInput");
