@@ -12,10 +12,10 @@ module.exports = async (req, res) => {
       sender_id, 
       receiver_id, 
       text,
-      is_read: false // Default unread
+      is_read: false 
     });
 
-    // Notify Telegram Bot
+    // Telegram Notification
     if (BOT_TOKEN) {
       try {
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -28,10 +28,9 @@ module.exports = async (req, res) => {
     return res.json(msg);
   }
 
-  // --- 2. MARK AS READ (New Feature) ---
+  // --- 2. MARK READ ---
   if (req.method === 'PUT') {
     const { myId, partnerId } = req.body;
-    // Mere partner ne jo mujhe bheje hain, unhe 'read' kar do
     await Message.updateMany(
       { sender_id: partnerId, receiver_id: myId, is_read: false },
       { $set: { is_read: true } }
@@ -42,42 +41,48 @@ module.exports = async (req, res) => {
   // --- 3. GET DATA ---
   const { u1, u2, type, myId } = req.query;
 
-  // A. Get Conversation History
+  // A. Get Specific Chat & Partner Status (Online Check)
   if (u1 && u2) {
+    // Messages fetch karo
     const msgs = await Message.find({
       $or: [
         { sender_id: u1, receiver_id: u2 },
         { sender_id: u2, receiver_id: u1 }
       ]
     }).sort({ timestamp: 1 });
-    return res.json(msgs);
+
+    // Partner ka status check karo (Last Seen)
+    const partner = await User.findOne({ tg_id: u2 }).select('last_seen first_name');
+    
+    return res.json({ messages: msgs, partner: partner });
   }
 
-  // B. Get Recent Chat List with UNREAD COUNTS
+  // B. Get Recent Chat List (CRASH FIX HERE)
   if (type === 'list' && myId) {
     const uid = Number(myId);
     
-    // Find messages where I am involved
+    // Find messages involving me
     const msgs = await Message.find({
       $or: [{ sender_id: uid }, { receiver_id: uid }]
     }).sort({ timestamp: -1 }).limit(200);
 
-    const partnerIds = new Set();
+    const partnerIds = new Set(); // Ye sahi variable name hai
     msgs.forEach(m => {
-      partnersIds.add(m.sender_id === uid ? m.receiver_id : m.sender_id);
+      // FIX: Pehle yahan spelling mistake thi (partnersIds)
+      partnerIds.add(m.sender_id === uid ? m.receiver_id : m.sender_id);
     });
 
     const partners = Array.from(partnerIds);
     const users = await User.find({ tg_id: { $in: partners } }).lean();
 
-    // Har user ke liye unread count nikalo
+    // Add unread counts
     for (let user of users) {
       const count = await Message.countDocuments({
         sender_id: user.tg_id,
         receiver_id: uid,
         is_read: false
       });
-      user.unread_count = count; // Frontend ko bhejo
+      user.unread_count = count;
     }
 
     return res.json(users);
