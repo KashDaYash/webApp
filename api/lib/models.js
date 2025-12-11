@@ -5,14 +5,14 @@ const UserSchema = new mongoose.Schema({
   username: String,
   first_name: String,
   photo_url: String,
-  last_seen: { type: Date, default: Date.now }
+  last_seen: { type: Date, default: Date.now },
+  last_typed: { type: Date, default: Date.now } // NEW: Typing status ke liye
 });
 
 const MessageSchema = new mongoose.Schema({
   sender_id: Number,
   receiver_id: Number,
   text: String,
-  // New Field: Track agar message padh liya gaya hai
   is_read: { type: Boolean, default: false }, 
   timestamp: { type: Date, default: Date.now }
 });
