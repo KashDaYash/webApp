@@ -18,7 +18,7 @@ const OWNER_ID = 1302298741;
 
 let currentChatId = null;
 let chatPoll = null;
-let currentUserData = null; // Store DB user data (permissions)
+let discoverPage = 1; // For Pagination
 
 // --- INITIALIZATION ---
 window.onload = () => {
@@ -39,7 +39,7 @@ window.onload = () => {
   if(app) app.classList.remove("hidden");
   if(nav) nav.classList.remove("hidden");
 
-  // 2. APPLY THEME
+  // 2. THEME INIT
   const bgPicker = document.getElementById("bgPicker");
   const gradCheck = document.getElementById("gradientToggle");
   const colorPreview = document.getElementById("colorPreviewBox");
@@ -67,7 +67,7 @@ window.onload = () => {
     });
   }
 
-  // 3. SYNC & CHECK PERMISSIONS
+  // 3. SYNC & PERMISSIONS
   syncUserAndCheckPermissions();
 
   // 4. UI FILL
@@ -79,15 +79,14 @@ window.onload = () => {
   }
 
   setTimeout(() => { if(loader) loader.style.display = "none"; }, 500);
-  loadRecentChats();
+  loadRecentChats(); // Initial Load
   
-  // Close context menu
+  // Close context menu logic
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.msg')) removeContextMenu();
   });
 };
 
-// --- SYNC & ADMIN CHECK ---
 async function syncUserAndCheckPermissions() {
   try {
     const res = await fetch('/api/syncUser', { 
@@ -95,34 +94,82 @@ async function syncUserAndCheckPermissions() {
       headers: {'Content-Type': 'application/json'}, 
       body: JSON.stringify(u) 
     });
-    currentUserData = await res.json();
+    const userData = await res.json();
 
     // Show Admin Button if Owner or Admin
-    if (currentUserData.tg_id === OWNER_ID || currentUserData.is_admin) {
+    if (userData.tg_id === OWNER_ID || userData.is_admin) {
       injectAdminButton();
     }
     
-    // Check if I am banned
-    if (currentUserData.is_banned) {
-      alert("You are BANNED from this app.");
+    if (userData.is_banned) {
+      alert("You are BANNED from using this app.");
       Telegram.WebApp.close();
     }
 
-    // Update Profile Badge
-    if (currentUserData.is_verified) {
+    if (userData.is_verified) {
        document.getElementById("userName").innerHTML += ` <span class="material-icons-round verified-badge" style="vertical-align:middle; font-size:1.2rem;">verified</span>`;
     }
-
   } catch(e) { console.error(e); }
 }
+
+// --- DISCOVER LOGIC (NEW) ---
+window.loadDiscoverUsers = async (reset = false) => {
+  const grid = document.getElementById("discoverGrid");
+  const btnContainer = document.getElementById("loadMoreContainer");
+  
+  if(reset) {
+    discoverPage = 1;
+    grid.innerHTML = "";
+    btnContainer.classList.add("hidden");
+  }
+
+  try {
+    // Fetch users (empty query = all users)
+    const res = await fetch(`/api/search?query=&page=${discoverPage}&myId=${u.id}`);
+    const users = await res.json();
+
+    if (!users || users.length === 0) {
+      if(discoverPage === 1) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:0.5;padding:20px">No users found</div>`;
+      btnContainer.classList.add("hidden");
+      return;
+    }
+
+    // Append Users
+    const html = users.map(user => `
+      <div class="grid-user-card" onclick="openChat(this)"
+           data-id="${user.tg_id}" 
+           data-name="${user.first_name}" 
+           data-photo="${user.photo_url || ''}"
+           data-verified="${user.is_verified}">
+        <img src="${user.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" loading="lazy">
+        <div class="grid-name">
+          ${user.first_name} 
+          ${user.is_verified ? '<span class="material-icons-round verified-badge" style="font-size:0.8rem">verified</span>' : ''}
+        </div>
+      </div>
+    `).join('');
+
+    grid.insertAdjacentHTML('beforeend', html);
+
+    // Show/Hide Load More Button
+    if (users.length === 10) {
+      btnContainer.classList.remove("hidden");
+    } else {
+      btnContainer.classList.add("hidden");
+    }
+
+  } catch(e) { console.error("Discover Error", e); }
+};
+
+window.loadMoreUsers = () => {
+  discoverPage++;
+  loadDiscoverUsers(false);
+};
 
 // --- ADMIN PANEL LOGIC ---
 function injectAdminButton() {
   const menuList = document.querySelector("#tab-settings .menu-list");
-  if(!menuList) return;
-  
-  // Prevent duplicate button
-  if(document.getElementById("adminPortalBtn")) return;
+  if(!menuList || document.getElementById("adminPortalBtn")) return;
 
   const adminBtn = document.createElement("div");
   adminBtn.id = "adminPortalBtn";
@@ -165,25 +212,25 @@ async function loadAdminData() {
     list.innerHTML = users.map(user => {
       const isTargetOwner = (user.tg_id === OWNER_ID);
       
-      // Buttons Logic
+      // Admin Button (Only Owner sees this)
       let adminBtn = '';
       if (isMeOwner && !isTargetOwner) {
-        adminBtn = `<button onclick="adminAction('toggle_admin', ${user.tg_id})" style="padding:6px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:0.8rem;">
-          ${user.is_admin ? 'Demote' : 'Make Admin'}
+        adminBtn = `<button onclick="adminAction('toggle_admin', ${user.tg_id})" style="padding:6px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:0.8rem;margin-left:auto">
+          ${user.is_admin ? 'Demote' : 'Promote Admin'}
         </button>`;
       }
 
       return `
       <div class="menu-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
-        <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+        <div style="display:flex; width:100%; align-items:center;">
           <div style="display:flex; align-items:center; gap:10px;">
             <img src="${user.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width:40px;height:40px;border-radius:50%">
             <div>
               <div style="font-weight:bold; font-size:0.95rem;">
                 ${user.first_name} 
                 ${user.is_verified ? '<span class="material-icons-round verified-badge" style="font-size:1rem">verified</span>' : ''}
-                ${user.is_admin ? '<span style="background:gold;color:black;font-size:0.6rem;padding:2px 4px;border-radius:4px;vertical-align:middle">ADMIN</span>' : ''}
-                ${user.is_banned ? '<span style="background:red;color:white;font-size:0.6rem;padding:2px 4px;border-radius:4px;vertical-align:middle">BANNED</span>' : ''}
+                ${user.is_admin ? '<span style="background:gold;color:black;font-size:0.6rem;padding:2px 4px;border-radius:4px;vertical-align:middle;font-weight:bold">ADMIN</span>' : ''}
+                ${user.is_banned ? '<span style="background:red;color:white;font-size:0.6rem;padding:2px 4px;border-radius:4px;vertical-align:middle;font-weight:bold">BANNED</span>' : ''}
               </div>
               <div style="font-size:0.7rem; opacity:0.6;">ID: ${user.tg_id}</div>
             </div>
@@ -222,7 +269,7 @@ window.adminAction = async (action, targetId) => {
     const data = await res.json();
     
     if(data.error) alert(data.error);
-    else loadAdminData(); // Refresh
+    else loadAdminData(); 
   } catch(e) { alert("Action Failed"); }
 };
 
@@ -234,41 +281,32 @@ window.filterAdminList = () => {
   });
 };
 
-// --- GLOBAL DISCOVER GRID (NEW TAB) ---
-async function loadDiscoverGrid() {
-  const grid = document.getElementById("discoverGrid");
-  if(!grid) return;
+// --- NAVIGATION ---
+window.switchTab = (tabId, navEl) => {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   
-  grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:0.5;padding:20px">Loading users...</div>`;
+  document.getElementById(tabId).classList.add('active-page');
+  
+  if(navEl) navEl.classList.add('active');
+  else {
+      // Auto highlight for non-click navigation
+      const map = {'tab-profile':0, 'tab-chat':1, 'tab-discover':2, 'tab-notif':3, 'tab-settings':4};
+      if(map[tabId] !== undefined) document.querySelectorAll('.nav-item')[map[tabId]].classList.add('active');
+  }
 
-  try {
-    // Reusing Admin List Logic (or you can verify specific API)
-    // Here using search API with empty query to fetch random users or use 'list'
-    // Let's use a trick: Search for empty string or a common letter to get many users
-    const res = await fetch(`/api/search?query=a&myId=${u.id}`); // Simple hack for now
-    const users = await res.json();
-    
-    if(!users || users.length === 0) {
-        grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:0.5">No users found</div>`;
-        return;
-    }
+  // Tab Specific Logic
+  if(tabId === 'tab-chat') {
+    document.getElementById("userSearch").value = "";
+    document.getElementById("suggestionList").innerHTML = "";
+    loadRecentChats();
+  }
+  if(tabId === 'tab-discover') {
+    loadDiscoverUsers(true); // Reset and Load
+  }
+};
 
-    grid.innerHTML = users.map(user => `
-      <div class="grid-user-card" onclick="openChat(this)"
-           data-id="${user.tg_id}" 
-           data-name="${user.first_name}" 
-           data-photo="${user.photo_url || ''}">
-        <img src="${user.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" loading="lazy">
-        <div class="grid-name">${user.first_name}</div>
-      </div>
-    `).join('');
-    
-  } catch(e) { grid.innerHTML = "Error loading"; }
-}
-
-// --- STANDARD FUNCTIONS (Theme, Nav, Chat) ---
-// (Same as before but integrated)
-
+// --- STANDARD FEATURES ---
 window.resetThemeToDefault = () => {
   localStorage.removeItem("customBg");
   localStorage.removeItem("isGradient");
@@ -276,7 +314,7 @@ window.resetThemeToDefault = () => {
   applyTheme(currentTheme);
   document.getElementById("bgPicker").value = "#0f0f0f";
   document.getElementById("gradientToggle").checked = false;
-  alert("Restored default theme!");
+  alert("Theme Reset!");
 };
 
 window.toggleTheme = () => {
@@ -309,30 +347,7 @@ function applyCustomBg(color, gradient) {
   root.style.setProperty('--bg', color);
 }
 
-window.switchTab = (tabId, navEl) => {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  
-  document.getElementById(tabId).classList.add('active-page');
-  
-  if(navEl) navEl.classList.add('active');
-  else {
-      // Auto-highlight logic for programmatic switches
-      const map = {'tab-profile':0, 'tab-chat':1, 'tab-discover':2, 'tab-notif':3, 'tab-settings':4};
-      if(map[tabId] !== undefined) document.querySelectorAll('.nav-item')[map[tabId]].classList.add('active');
-  }
-
-  if(tabId === 'tab-chat') {
-    document.getElementById("userSearch").value = "";
-    document.getElementById("suggestionList").innerHTML = "";
-    loadRecentChats();
-  }
-  if(tabId === 'tab-discover') {
-    loadDiscoverGrid();
-  }
-};
-
-// --- SEARCH & CHAT ---
+// --- SEARCH & RECENT ---
 const sInput = document.getElementById("userSearch");
 let sTimer;
 if(sInput) {
@@ -356,8 +371,11 @@ async function doSearch(query) {
   sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.6">Searching...</div>`;
   try {
     const res = await fetch(`/api/search?query=${query}&myId=${u.id}`);
-    const rawData = await res.json();
-    const data = rawData.filter(user => Number(user.tg_id) !== Number(u.id));
+    const users = await res.json();
+    
+    // Sort logic handled in backend now, but filter self just in case
+    const data = users.filter(user => Number(user.tg_id) !== Number(u.id));
+    
     if(data.length === 0) {
       sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5">No users found</div>`;
       return;
@@ -391,7 +409,7 @@ function renderUserItem(usr, showBadge = false) {
     : `<span class="material-icons-round" style="color:var(--accent)">chevron_right</span>`;
   
   const adminBadge = usr.is_verified ? `<span class="material-icons-round verified-badge">verified</span>` : ``;
-  const ownerTag = usr.is_owner ? `<span style="background:gold;color:black;font-size:0.6rem;padding:1px 4px;border-radius:4px;margin-left:5px;vertical-align:middle;font-weight:bold">OWNER</span>` : ``;
+  const ownerTag = (usr.tg_id === OWNER_ID || usr.is_owner) ? `<span style="background:gold;color:black;font-size:0.6rem;padding:1px 4px;border-radius:4px;margin-left:5px;vertical-align:middle;font-weight:bold">OWNER</span>` : ``;
 
   return `
     <div class="user-item" 
@@ -412,18 +430,22 @@ function renderUserItem(usr, showBadge = false) {
   `;
 }
 
+// --- CHAT WINDOW ---
 window.openChat = async (el) => {
   const id = el.getAttribute("data-id");
   const name = el.getAttribute("data-name");
   const photo = el.getAttribute("data-photo");
   const isVerified = el.getAttribute("data-verified") === 'true';
+  const isOwner = Number(id) === OWNER_ID;
   
   if(!id) return;
   currentChatId = Number(id);
   
-  const adminIcon = isVerified ? `<span class="material-icons-round verified-badge" style="font-size:1.1rem;margin-left:5px">verified</span>` : ``;
-  
-  document.getElementById("chatPartnerName").innerHTML = name + adminIcon;
+  let badges = "";
+  if(isVerified) badges += `<span class="material-icons-round verified-badge" style="font-size:1.1rem;margin-left:5px">verified</span>`;
+  if(isOwner) badges += `<span style="background:gold;color:black;font-size:0.6rem;padding:1px 4px;border-radius:4px;margin-left:5px;vertical-align:middle;font-weight:bold">OWNER</span>`;
+
+  document.getElementById("chatPartnerName").innerHTML = name + badges;
   document.getElementById("chatPartnerImg").src = photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   document.querySelector(".status").textContent = "Connecting...";
 
@@ -460,6 +482,7 @@ async function loadMsgs() {
     const msgs = data.messages || [];
     const partner = data.partner || {};
 
+    // Status logic
     const statusEl = document.querySelector(".status");
     if (partner.last_seen) {
       const last = new Date(partner.last_seen).getTime();
@@ -543,15 +566,29 @@ window.sendMsg = async () => {
   const inp = document.getElementById("msgInput");
   const txt = inp.value.trim();
   if(!txt || !currentChatId) return;
+  
+  // Check if current user is banned locally (quick check)
+  if(currentUserData && currentUserData.is_banned) {
+      alert("You are banned!");
+      return;
+  }
+
   inp.value = "";
   const box = document.getElementById("messageArea");
   const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   box.innerHTML += `<div class="msg out" style="opacity:0.7">${txt}<span class="msg-time">${t}</span></div>`;
   box.scrollTop = box.scrollHeight;
-  await fetch('/api/chat', {
+
+  const res = await fetch('/api/chat', {
     method:'POST',
     headers:{'Content-Type':'application/json'},
     body: JSON.stringify({sender_id: u.id, receiver_id: currentChatId, text: txt})
   });
+  
+  if(!res.ok) {
+      const err = await res.json();
+      if(err.error) alert(err.error);
+  }
+  
   loadMsgs();
 };
