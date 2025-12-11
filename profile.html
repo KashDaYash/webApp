@@ -20,7 +20,7 @@
       <div class="gate-icon">🚀</div>
       <h1>Open in Telegram</h1>
       <p>This experience is designed for the Telegram App.</p>
-      <a href="https://t.me/ProfileShowXBot/app" class="gate-btn">Launch App</a>
+      <a href="https://t.me/YOUR_BOT_USERNAME/app" class="gate-btn">Launch App</a>
     </div>
   </div>
 
@@ -87,28 +87,33 @@
         </div>
 
         <div class="menu-row">
-          <div class="row-left">
-            <span class="material-icons-round" style="color:#3b82f6">gradient</span> Gradient Mode
-          </div>
+          <div class="row-left"><span class="material-icons-round" style="color:#3b82f6">gradient</span> Gradient Mode</div>
           <div class="row-right">
-            <label class="switch">
-              <input type="checkbox" id="gradientToggle">
-              <span class="slider"></span>
-            </label>
+            <label class="switch"><input type="checkbox" id="gradientToggle"><span class="slider"></span></label>
           </div>
         </div>
 
         <div class="menu-row" onclick="resetThemeToDefault()">
-          <div class="row-left">
-            <span class="material-icons-round" style="color:#ef4444">restart_alt</span> Reset Theme
-          </div>
+          <div class="row-left"><span class="material-icons-round" style="color:#ef4444">restart_alt</span> Reset Theme</div>
         </div>
 
         <div class="menu-row danger" onclick="Telegram.WebApp.close()">
            <div class="row-left"><span class="material-icons-round">logout</span> Close App</div>
         </div>
-
       </div>
+    </section>
+
+    <section id="tab-admin" class="page">
+      <div class="page-header"><h2>👑 Admin Panel</h2></div>
+      <div class="search-input-wrapper" style="margin-bottom: 20px;">
+        <span class="material-icons-round">search</span>
+        <input type="text" id="adminSearch" placeholder="Search Database..." oninput="filterAdminList()">
+      </div>
+      <div class="admin-stats-card">
+        <div class="stat"><h3 id="totalUsers">0</h3><small>Total Users</small></div>
+        <div class="stat"><h3 id="activeToday" style="color:#4ade80">Online</h3><small>Status</small></div>
+      </div>
+      <div id="adminUserList" class="menu-list"></div>
     </section>
 
   </main>
