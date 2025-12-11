@@ -28,22 +28,18 @@
     
     <section id="tab-profile" class="page active-page">
       <div class="profile-card">
-        
         <button id="themeToggle" class="theme-btn-float" onclick="toggleTheme()">
           <span class="material-icons-round">dark_mode</span>
         </button>
-
         <div class="avatar-wrapper">
           <div id="lottie" class="lottie-glow"></div>
           <img id="userAvatar" class="avatar" src=""/>
         </div>
         <h2 id="userName">Loading...</h2>
-        
         <div class="stats-row">
            <div class="stat-item"><span class="stat-val" id="friendsCount">0</span><span class="stat-label">Chats</span></div>
            <div class="stat-item"><span class="stat-val" id="userLanguage">EN</span><span class="stat-label">Lang</span></div>
         </div>
-
         <div class="profile-body">
            <div class="info-box copyable"><span class="material-icons-round icon">fingerprint</span><span id="userId" class="text-val">...</span></div>
            <div class="info-box copyable"><span class="material-icons-round icon">alternate_email</span><span id="userHandle" class="text-val">...</span></div>
@@ -85,7 +81,6 @@
     <section id="tab-settings" class="page">
       <div class="page-header"><h2>Settings</h2></div>
       <div class="menu-list">
-        
         <div class="menu-row clickable-row">
           <div class="row-left">
             <span class="material-icons-round" style="color:#a855f7">palette</span> Change Background
@@ -97,7 +92,6 @@
             </div>
           </div>
         </div>
-
         <div class="menu-row">
           <div class="row-left">
             <span class="material-icons-round" style="color:#3b82f6">gradient</span> Gradient Mode
@@ -109,13 +103,9 @@
             </label>
           </div>
         </div>
-
         <div class="menu-row" onclick="resetThemeToDefault()">
-          <div class="row-left">
-            <span class="material-icons-round" style="color:#ef4444">restart_alt</span> Reset Theme
-          </div>
+          <div class="row-left"><span class="material-icons-round" style="color:#ef4444">restart_alt</span> Reset Theme</div>
         </div>
-
         <div class="menu-row danger" onclick="Telegram.WebApp.close()">
            <div class="row-left"><span class="material-icons-round">logout</span> Close App</div>
         </div>
@@ -137,42 +127,38 @@
   </main>
 
   <nav id="bottomNav" class="bottom-nav hidden">
-    <div class="nav-item active" onclick="switchTab('tab-profile', this)">
-      <span class="material-icons-round">person</span>
-    </div>
-    <div class="nav-item" onclick="switchTab('tab-chat', this)">
-      <span class="material-icons-round">chat_bubble</span>
-    </div>
-    <div class="nav-item" onclick="switchTab('tab-discover', this)">
-      <span class="material-icons-round">explore</span>
-    </div>
-    <div class="nav-item" onclick="switchTab('tab-notif', this)">
-      <span class="material-icons-round">notifications</span>
-    </div>
-    <div class="nav-item" onclick="switchTab('tab-settings', this)">
-      <span class="material-icons-round">settings</span>
-    </div>
+    <div class="nav-item active" onclick="switchTab('tab-profile', this)"><span class="material-icons-round">person</span></div>
+    <div class="nav-item" onclick="switchTab('tab-chat', this)"><span class="material-icons-round">chat_bubble</span></div>
+    <div class="nav-item" onclick="switchTab('tab-discover', this)"><span class="material-icons-round">explore</span></div>
+    <div class="nav-item" onclick="switchTab('tab-notif', this)"><span class="material-icons-round">notifications</span></div>
+    <div class="nav-item" onclick="switchTab('tab-settings', this)"><span class="material-icons-round">settings</span></div>
   </nav>
 
   <div id="chatRoom" class="chat-room-overlay">
     <div class="chat-room-header">
-      <button class="back-btn" onclick="closeChat()">
-        <span class="material-icons-round">arrow_back_ios</span>
-      </button>
+      <button class="back-btn" onclick="closeChat()"><span class="material-icons-round">arrow_back_ios</span></button>
       <img id="chatPartnerImg" src="" class="header-avatar">
-      <div class="header-info">
-        <h3 id="chatPartnerName">User</h3>
-        <span class="status">Online</span>
-      </div>
+      <div class="header-info"><h3 id="chatPartnerName">User</h3><span class="status">Online</span></div>
     </div>
     
     <div id="messageArea" class="messages-container"></div>
     
+    <div id="giphyPanel" class="sticker-picker hidden">
+      <div class="giphy-search-bar">
+        <span class="material-icons-round">search</span>
+        <input type="text" id="giphySearchInput" placeholder="Search GIPHY..." autocomplete="off">
+        <div id="giphyLogo"></div> </div>
+      <div id="giphyGrid" class="giphy-grid">
+        </div>
+    </div>
+
     <div class="chat-input-bar">
-      <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
-      <button id="sendBtn" class="send-fab" onclick="sendMsg()">
-        <span class="material-icons-round">send</span>
+      <button class="icon-btn" onclick="toggleGiphyPicker()" style="margin-right:8px; color:var(--text-sec)">
+        <span class="material-icons-round">gif_box</span>
       </button>
+
+      <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
+      <button id="sendBtn" class="send-fab" onclick="sendMsg()"><span class="material-icons-round">send</span></button>
     </div>
   </div>
 
