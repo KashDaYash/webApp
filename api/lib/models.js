@@ -1,4 +1,3 @@
-// api/lib/models.js
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
@@ -13,6 +12,8 @@ const MessageSchema = new mongoose.Schema({
   sender_id: Number,
   receiver_id: Number,
   text: String,
+  // New Field: Track agar message padh liya gaya hai
+  is_read: { type: Boolean, default: false }, 
   timestamp: { type: Date, default: Date.now }
 });
 
