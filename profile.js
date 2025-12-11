@@ -13,10 +13,13 @@ else { applyTheme(currentTheme); }
 
 // USER DATA
 const u = tg.initDataUnsafe?.user;
+// ➤ YOUR ADMIN ID
+const ADMIN_ID = 1302298741; 
+
 let currentChatId = null;
 let chatPoll = null;
-let longPressTimer = null; // Timer for delete menu
 
+// --- INITIALIZATION ---
 window.onload = () => {
   const gate = document.getElementById("loginGate");
   const app = document.getElementById("app");
@@ -67,8 +70,14 @@ window.onload = () => {
     body: JSON.stringify(u) 
   }).catch(console.error);
 
+  // Admin Badge on Profile if it's YOU
+  let nameHTML = u.first_name;
+  if(u.id === ADMIN_ID) {
+      nameHTML += ` <span class="material-icons-round verified-badge" style="vertical-align:middle; font-size:1.2rem;">verified</span>`;
+  }
+
   if(document.getElementById("userName")) {
-      document.getElementById("userName").textContent = u.first_name;
+      document.getElementById("userName").innerHTML = nameHTML;
       document.getElementById("userHandle").textContent = u.username ? "@"+u.username : "—";
       document.getElementById("userId").textContent = u.id;
       if(u.photo_url) document.getElementById("userAvatar").src = u.photo_url;
@@ -77,7 +86,7 @@ window.onload = () => {
   setTimeout(() => { if(loader) loader.style.display = "none"; }, 500);
   loadRecentChats();
   
-  // Close context menu on click anywhere
+  // Close context menu on click
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.msg')) removeContextMenu();
   });
@@ -195,7 +204,7 @@ function renderUserItem(usr, showBadge = false) {
     ? `<div class="unread-badge">${usr.unread_count}</div>` 
     : `<span class="material-icons-round" style="color:var(--accent)">chevron_right</span>`;
   
-  // ADMIN BADGE
+  // ADMIN BADGE LOGIC
   const adminBadge = usr.is_admin 
     ? `<span class="material-icons-round verified-badge">verified</span>` 
     : ``;
@@ -228,7 +237,7 @@ window.openChat = async (el) => {
   if(!id) return;
   currentChatId = Number(id);
   
-  // Show Admin Badge in Header
+  // Header with Admin Badge
   const adminIcon = isAdmin ? `<span class="material-icons-round verified-badge" style="font-size:1.1rem;margin-left:5px">verified</span>` : ``;
   
   document.getElementById("chatPartnerName").innerHTML = name + adminIcon;
@@ -268,6 +277,7 @@ async function loadMsgs() {
     const msgs = data.messages || [];
     const partner = data.partner || {};
 
+    // Online Status Logic
     const statusEl = document.querySelector(".status");
     if (partner.last_seen) {
       const last = new Date(partner.last_seen).getTime();
@@ -282,17 +292,17 @@ async function loadMsgs() {
     }
 
     const box = document.getElementById("messageArea");
-    // Only scroll if already at bottom or first load
-    const isBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 150;
-    
-    // Check if we are re-rendering to avoid removing context menu
+    // Render only if menu not open
     if(document.querySelector('.context-menu')) return; 
 
+    const isBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 150;
+    
     box.innerHTML = msgs.map(m => {
       const t = new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
       const isMe = m.sender_id == u.id;
       const checks = isMe ? (m.is_read ? '✓✓' : '✓') : '';
-      // ADDED: data-msg-id for deletion
+      
+      // Feature 4: Context Menu on Long Press
       return `
         <div class="msg ${isMe ? 'out' : 'in'}" 
              data-msg-id="${m._id}" 
@@ -306,36 +316,31 @@ async function loadMsgs() {
   } catch(e){}
 }
 
-// --- LONG PRESS / CONTEXT MENU ---
+// --- LONG PRESS MENU ---
 window.showContextMenu = (e, el, isMe) => {
   e.preventDefault();
-  removeContextMenu(); // Clear existing
+  removeContextMenu(); 
 
   const menu = document.createElement("div");
   menu.className = "context-menu";
   const msgId = el.getAttribute("data-msg-id");
-  const text = el.innerText.split("\n")[0]; // Basic text extraction
+  const text = el.innerText.split("\n")[0]; 
 
   menu.innerHTML = `
     <div class="ctx-item" onclick="navigator.clipboard.writeText('${text}');removeContextMenu()">
       <span class="material-icons-round">content_copy</span> Copy
     </div>
     ${isMe ? `
-    <div class="ctx-item delete" onclick="deleteMessage('${msgId}', this)">
+    <div class="ctx-item delete" onclick="deleteMessage('${msgId}')">
       <span class="material-icons-round">delete</span> Delete
     </div>` : ''}
   `;
 
-  // Position Menu
   const rect = el.getBoundingClientRect();
   menu.style.top = `${rect.top + window.scrollY + 10}px`;
-  // Adjust Left/Right
-  if(isMe) menu.style.right = "20px";
-  else menu.style.left = "20px";
+  if(isMe) menu.style.right = "20px"; else menu.style.left = "20px";
 
   document.body.appendChild(menu);
-  
-  // Vibration for effect
   if(window.navigator.vibrate) window.navigator.vibrate(50);
 };
 
@@ -346,11 +351,10 @@ window.removeContextMenu = () => {
 
 window.deleteMessage = async (msgId) => {
   removeContextMenu();
-  if(!confirm("Delete this message?")) return;
+  if(!confirm("Delete for everyone?")) return;
 
-  // Optimistic Remove
   const el = document.querySelector(`[data-msg-id="${msgId}"]`);
-  if(el) el.style.display = "none";
+  if(el) el.style.display = "none"; // Instant hide
 
   try {
     await fetch('/api/chat', {
@@ -358,7 +362,7 @@ window.deleteMessage = async (msgId) => {
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ message_id: msgId, user_id: u.id })
     });
-  } catch(e) { alert("Failed to delete"); }
+  } catch(e) { alert("Delete failed"); }
 };
 
 window.sendMsg = async () => {
