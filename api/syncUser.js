@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const BOT_TOKEN = process.env.BOT_TOKEN;
-const LOGGER_ID = '-1002751673545'; // Aapka Logger Group ID
+const LOGGER_ID = 'KashDaYashLogs'; // Aapka Logger Group ID
 
 // --- DB CONNECTION ---
 let isConnected = false;
