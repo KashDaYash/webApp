@@ -18,12 +18,9 @@
   <div id="loginGate" class="login-gate hidden">
     <div class="gate-content">
       <div class="gate-icon">🚀</div>
-      <h1>Welcome to WebApp</h1>
-      <p>This app is designed to work inside Telegram.</p>
-      
-      <a href="https://t.me/ProfileShowXBot/app" class="gate-btn">
-        Open via Telegram
-      </a>
+      <h1>Open in Telegram</h1>
+      <p>This experience is designed for the Telegram App.</p>
+      <a href="https://t.me/YOUR_BOT_USERNAME/app" class="gate-btn">Launch App</a>
     </div>
   </div>
 
@@ -39,49 +36,32 @@
           <div id="lottie" class="lottie-glow"></div>
           <img id="userAvatar" class="avatar" src=""/>
         </div>
-
-        <h2 id="userName">Guest</h2>
+        <h2 id="userName">Loading...</h2>
         
         <div class="stats-row">
-           <div class="stat-item">
-             <span class="stat-val" id="friendsCount">0</span>
-             <span class="stat-label">Chats</span>
-           </div>
-           <div class="stat-item">
-             <span class="stat-val" id="userLanguage">EN</span>
-             <span class="stat-label">Lang</span>
-           </div>
+           <div class="stat-item"><span class="stat-val" id="friendsCount">0</span><span class="stat-label">Chats</span></div>
+           <div class="stat-item"><span class="stat-val" id="userLanguage">EN</span><span class="stat-label">Lang</span></div>
         </div>
 
         <div class="profile-body">
-           <div class="info-box copyable">
-             <span class="material-icons-round icon">fingerprint</span>
-             <span id="userId" class="text-val">...</span>
-           </div>
-           <div class="info-box copyable">
-             <span class="material-icons-round icon">alternate_email</span>
-             <span id="userHandle" class="text-val">...</span>
-           </div>
+           <div class="info-box copyable"><span class="material-icons-round icon">fingerprint</span><span id="userId" class="text-val">...</span></div>
+           <div class="info-box copyable"><span class="material-icons-round icon">alternate_email</span><span id="userHandle" class="text-val">...</span></div>
         </div>
       </div>
     </section>
 
     <section id="tab-chat" class="page">
       <div class="page-header"><h2>Messages</h2></div>
-      
       <div class="search-sticky">
         <div class="search-input-wrapper">
           <span class="material-icons-round">search</span>
           <input type="text" id="userSearch" placeholder="Search users..." autocomplete="off">
         </div>
       </div>
-
       <div id="suggestionList" class="user-list"></div>
       <div id="recentChatsList" class="user-list"></div>
-      
       <div id="emptyChatState" class="empty-state hidden">
-        <span class="material-icons-round">forum</span>
-        <p>No chats yet</p>
+        <span class="material-icons-round">forum</span><p>No chats yet</p>
       </div>
     </section>
 
@@ -89,16 +69,29 @@
       <div class="page-header"><h2>Notifications</h2></div>
       <div class="empty-state" style="margin-top: 50px;">
         <span class="material-icons-round" style="font-size: 4rem; opacity: 0.2;">notifications_none</span>
-        <p style="opacity: 0.6;">No new notifications</p>
+        <p style="opacity: 0.6;">All caught up!</p>
       </div>
     </section>
 
     <section id="tab-settings" class="page">
       <div class="page-header"><h2>Settings</h2></div>
       <div class="menu-list">
-        <div class="menu-row" onclick="toggleTheme()">
-          <div class="row-left"><span class="material-icons-round">palette</span> Appearance</div>
+        
+        <div class="menu-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
+          <div class="row-left" style="width: 100%; justify-content: space-between;">
+            <span style="display:flex;align-items:center;gap:10px"><span class="material-icons-round">color_lens</span> Custom Background</span>
+            <input type="color" id="bgPicker" value="#0f0f0f" style="border:none; background:none; height:30px; width:30px;">
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center; font-size: 0.9rem; opacity: 0.8;">
+            <input type="checkbox" id="gradientToggle"> <label for="gradientToggle">Gradient Mode</label>
+          </div>
+          <button onclick="resetThemeToDefault()" style="width:100%; padding:8px; background:rgba(255,255,255,0.1); border:none; color:var(--text); border-radius:8px; margin-top:5px;">Reset to Default</button>
         </div>
+
+        <div class="menu-row" onclick="toggleTheme()">
+          <div class="row-left"><span class="material-icons-round">brightness_6</span> Toggle Dark/Light</div>
+        </div>
+
         <div class="menu-row danger" onclick="Telegram.WebApp.close()">
            <div class="row-left"><span class="material-icons-round">logout</span> Close App</div>
         </div>
@@ -108,39 +101,26 @@
   </main>
 
   <nav id="bottomNav" class="bottom-nav hidden">
-    <div class="nav-item active" onclick="switchTab('tab-profile', this)">
-      <span class="material-icons-round">person</span>
-    </div>
-    <div class="nav-item" onclick="switchTab('tab-chat', this)">
-      <span class="material-icons-round">chat_bubble</span>
-    </div>
-    <div class="nav-item" onclick="switchTab('tab-notif', this)">
-      <span class="material-icons-round">notifications</span>
-    </div>
-    <div class="nav-item" onclick="switchTab('tab-settings', this)">
-      <span class="material-icons-round">settings</span>
-    </div>
+    <div class="nav-item active" onclick="switchTab('tab-profile', this)"><span class="material-icons-round">person</span></div>
+    <div class="nav-item" onclick="switchTab('tab-chat', this)"><span class="material-icons-round">chat_bubble</span></div>
+    <div class="nav-item" onclick="switchTab('tab-notif', this)"><span class="material-icons-round">notifications</span></div>
+    <div class="nav-item" onclick="switchTab('tab-settings', this)"><span class="material-icons-round">settings</span></div>
   </nav>
 
   <div id="chatRoom" class="chat-room-overlay">
     <div class="chat-room-header">
-      <button class="back-btn" onclick="closeChatRoom()">
+      <button class="back-btn" onclick="closeChat()">
         <span class="material-icons-round">arrow_back_ios</span>
       </button>
       <img id="chatPartnerImg" src="" class="header-avatar">
-      <div class="header-info">
-        <h3 id="chatPartnerName">User</h3>
-        <span class="status">Online</span>
-      </div>
+      <div class="header-info"><h3 id="chatPartnerName">User</h3><span class="status">Online</span></div>
     </div>
-
+    
     <div id="messageArea" class="messages-container"></div>
-
+    
     <div class="chat-input-bar">
       <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
-      <button id="sendBtn" class="send-fab" onclick="sendMsg()">
-        <span class="material-icons-round">send</span>
-      </button>
+      <button id="sendBtn" class="send-fab" onclick="sendMsg()"><span class="material-icons-round">send</span></button>
     </div>
   </div>
 
