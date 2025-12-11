@@ -28,18 +28,17 @@
     
     <section id="tab-profile" class="page active-page">
       <div class="profile-card">
-        <button id="themeToggle" class="theme-btn-float" onclick="toggleTheme()">
-          <span class="material-icons-round">dark_mode</span>
-        </button>
         <div class="avatar-wrapper">
           <div id="lottie" class="lottie-glow"></div>
           <img id="userAvatar" class="avatar" src=""/>
         </div>
         <h2 id="userName">Loading...</h2>
+        
         <div class="stats-row">
            <div class="stat-item"><span class="stat-val" id="friendsCount">0</span><span class="stat-label">Chats</span></div>
            <div class="stat-item"><span class="stat-val" id="userLanguage">EN</span><span class="stat-label">Lang</span></div>
         </div>
+
         <div class="profile-body">
            <div class="info-box copyable"><span class="material-icons-round icon">fingerprint</span><span id="userId" class="text-val">...</span></div>
            <div class="info-box copyable"><span class="material-icons-round icon">alternate_email</span><span id="userHandle" class="text-val">...</span></div>
@@ -52,7 +51,7 @@
       <div class="search-sticky">
         <div class="search-input-wrapper">
           <span class="material-icons-round">search</span>
-          <input type="text" id="userSearch" placeholder="Search users..." autocomplete="off">
+          <input type="text" id="userSearch" placeholder="Search..." autocomplete="off">
         </div>
       </div>
       <div id="suggestionList" class="user-list"></div>
@@ -60,6 +59,12 @@
       <div id="emptyChatState" class="empty-state hidden">
         <span class="material-icons-round">forum</span><p>No chats yet</p>
       </div>
+    </section>
+
+    <section id="tab-discover" class="page">
+      <div class="page-header"><h2>Discover</h2></div>
+      <div id="discoverGrid" class="users-grid">
+        </div>
     </section>
 
     <section id="tab-notif" class="page">
@@ -87,14 +92,21 @@
         </div>
 
         <div class="menu-row">
-          <div class="row-left"><span class="material-icons-round" style="color:#3b82f6">gradient</span> Gradient Mode</div>
+          <div class="row-left">
+            <span class="material-icons-round" style="color:#3b82f6">gradient</span> Gradient Mode
+          </div>
           <div class="row-right">
-            <label class="switch"><input type="checkbox" id="gradientToggle"><span class="slider"></span></label>
+            <label class="switch">
+              <input type="checkbox" id="gradientToggle">
+              <span class="slider"></span>
+            </label>
           </div>
         </div>
 
         <div class="menu-row" onclick="resetThemeToDefault()">
-          <div class="row-left"><span class="material-icons-round" style="color:#ef4444">restart_alt</span> Reset Theme</div>
+          <div class="row-left">
+            <span class="material-icons-round" style="color:#ef4444">restart_alt</span> Reset Theme
+          </div>
         </div>
 
         <div class="menu-row danger" onclick="Telegram.WebApp.close()">
@@ -105,13 +117,12 @@
 
     <section id="tab-admin" class="page">
       <div class="page-header"><h2>👑 Admin Panel</h2></div>
-      <div class="search-input-wrapper" style="margin-bottom: 20px;">
+      <div class="search-input-wrapper" style="margin-bottom:20px;">
         <span class="material-icons-round">search</span>
-        <input type="text" id="adminSearch" placeholder="Search Database..." oninput="filterAdminList()">
+        <input type="text" id="adminSearch" placeholder="Search DB..." oninput="filterAdminList()">
       </div>
       <div class="admin-stats-card">
-        <div class="stat"><h3 id="totalUsers">0</h3><small>Total Users</small></div>
-        <div class="stat"><h3 id="activeToday" style="color:#4ade80">Online</h3><small>Status</small></div>
+        <div class="stat"><h3 id="totalUsers">0</h3><small>Users</small></div>
       </div>
       <div id="adminUserList" class="menu-list"></div>
     </section>
@@ -119,22 +130,39 @@
   </main>
 
   <nav id="bottomNav" class="bottom-nav hidden">
-    <div class="nav-item active" onclick="switchTab('tab-profile', this)"><span class="material-icons-round">person</span></div>
-    <div class="nav-item" onclick="switchTab('tab-chat', this)"><span class="material-icons-round">chat_bubble</span></div>
-    <div class="nav-item" onclick="switchTab('tab-notif', this)"><span class="material-icons-round">notifications</span></div>
-    <div class="nav-item" onclick="switchTab('tab-settings', this)"><span class="material-icons-round">settings</span></div>
+    <div class="nav-item active" onclick="switchTab('tab-profile', this)">
+      <span class="material-icons-round">person</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('tab-chat', this)">
+      <span class="material-icons-round">chat_bubble</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('tab-discover', this)">
+      <span class="material-icons-round">explore</span> </div>
+    <div class="nav-item" onclick="switchTab('tab-notif', this)">
+      <span class="material-icons-round">notifications</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('tab-settings', this)">
+      <span class="material-icons-round">settings</span>
+    </div>
   </nav>
 
   <div id="chatRoom" class="chat-room-overlay">
     <div class="chat-room-header">
-      <button class="back-btn" onclick="closeChat()"><span class="material-icons-round">arrow_back_ios</span></button>
+      <button class="back-btn" onclick="closeChat()">
+        <span class="material-icons-round">arrow_back_ios</span>
+      </button>
       <img id="chatPartnerImg" src="" class="header-avatar">
-      <div class="header-info"><h3 id="chatPartnerName">User</h3><span class="status">Online</span></div>
+      <div class="header-info">
+        <h3 id="chatPartnerName">User</h3>
+        <span class="status">Online</span>
+      </div>
     </div>
     <div id="messageArea" class="messages-container"></div>
     <div class="chat-input-bar">
       <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
-      <button id="sendBtn" class="send-fab" onclick="sendMsg()"><span class="material-icons-round">send</span></button>
+      <button id="sendBtn" class="send-fab" onclick="sendMsg()">
+        <span class="material-icons-round">send</span>
+      </button>
     </div>
   </div>
 
