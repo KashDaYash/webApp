@@ -176,65 +176,81 @@ window.openChat = async (el) => {
 
   currentChatId = Number(id);
   
-  // UI Update
+  // Header Update
   document.getElementById("chatPartnerName").textContent = name;
   document.getElementById("chatPartnerImg").src = photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-  
-  // 1. Mark as Read on Server
+  document.querySelector(".status").textContent = "Connecting..."; // Temp status
+
+  // Mark Read
   fetch('/api/chat', {
     method: 'PUT',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ myId: u.id, partnerId: currentChatId })
   });
 
-  // 2. Open Overlay
+  // Open Overlay
   const overlay = document.getElementById("chatRoom");
   overlay.classList.add("open");
   
-  // 3. Handle Back Button
   tg.BackButton.show();
   tg.BackButton.onClick(closeChat);
 
-  // 4. Load Messages
   loadMsgs();
   if(chatPoll) clearInterval(chatPoll);
-  chatPoll = setInterval(loadMsgs, 3000);
-};
-
-window.closeChat = () => {
-  // Hide Overlay
-  document.getElementById("chatRoom").classList.remove("open");
-  
-  // Hide Telegram Back Button
-  tg.BackButton.hide();
-  // Remove event listener to prevent double clicks
-  tg.BackButton.offClick(closeChat); 
-  
-  clearInterval(chatPoll);
-  currentChatId = null;
-  
-  // Refresh List (Badge hatane ke liye)
-  loadRecentChats(); 
+  chatPoll = setInterval(loadMsgs, 3000); // 3 sec polling for Realtime/Online status
 };
 
 async function loadMsgs() {
   if(!currentChatId) return;
   try {
     const res = await fetch(`/api/chat?u1=${u.id}&u2=${currentChatId}`);
-    const msgs = await res.json();
-    const box = document.getElementById("messageArea");
+    const data = await res.json(); // Ab ye object return karega {messages: [], partner: {}}
     
+    const msgs = data.messages || [];
+    const partner = data.partner || {};
+
+    // --- ONLINE STATUS LOGIC ---
+    const statusEl = document.querySelector(".status");
+    if (partner.last_seen) {
+      const lastSeen = new Date(partner.last_seen).getTime();
+      const now = new Date().getTime();
+      const diff = (now - lastSeen) / 1000; // seconds
+      
+      // Agar 120 seconds (2 min) se kam hai to Online
+      if (diff < 120) {
+        statusEl.textContent = "🟢 Online";
+        statusEl.style.color = "#4ade80"; // Green
+      } else {
+        // Show Time
+        const timeStr = new Date(partner.last_seen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        statusEl.textContent = `Last seen: ${timeStr}`;
+        statusEl.style.color = "var(--text-sec)";
+      }
+    }
+
+    // Render Messages
+    const box = document.getElementById("messageArea");
     const isBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 150;
     
     box.innerHTML = msgs.map(m => {
       const t = new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-      // Check logic updated slightly
-      return `<div class="msg ${m.sender_id == u.id ? 'out' : 'in'}">${m.text}<span class="msg-time">${t}</span></div>`;
+      const isMe = m.sender_id == u.id;
+      // Double check mark for read
+      const checks = isMe ? (m.is_read ? '✓✓' : '✓') : '';
+      
+      return `
+        <div class="msg ${isMe ? 'out' : 'in'}">
+          ${m.text}
+          <span class="msg-time">
+            ${t} <span style="margin-left:3px">${checks}</span>
+          </span>
+        </div>`;
     }).join('');
 
     if(isBottom || msgs.length < 5) box.scrollTop = box.scrollHeight;
-  } catch(e){}
+  } catch(e){ console.error(e); }
 }
+
 
 window.sendMsg = async () => {
   const inp = document.getElementById("msgInput");
