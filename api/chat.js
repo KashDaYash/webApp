@@ -8,6 +8,8 @@ module.exports = async (req, res) => {
   // --- 1. SEND MESSAGE ---
   if (req.method === 'POST') {
     const { sender_id, receiver_id, text } = req.body;
+    
+    // 1. Save Message to DB
     const msg = await Message.create({ 
       sender_id, 
       receiver_id, 
@@ -15,15 +17,31 @@ module.exports = async (req, res) => {
       is_read: false 
     });
 
-    // Telegram Notification
+    // 2. Notify Telegram Bot (With Name & Username)
     if (BOT_TOKEN) {
       try {
+        // Sender ki details nikalo DB se
+        const sender = await User.findOne({ tg_id: sender_id });
+        
+        // Name aur Username set karo (Fallback ke sath)
+        const name = sender ? sender.first_name : "Someone";
+        const username = sender && sender.username ? `(@${sender.username})` : "";
+
+        // Notification Message Banao
+        const notifText = `📩 New Message from <b>${name}</b> ${username}:\n\n<i>"${text}"</i>\n\n👇 Open App to reply.`;
+
         await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chat_id: receiver_id, text: `📩 New Message:\n${text}` })
+          body: JSON.stringify({ 
+            chat_id: receiver_id, 
+            text: notifText,
+            parse_mode: 'HTML' // Taaki Bold/Italic kaam kare
+          })
         });
-      } catch (e) {}
+      } catch (e) {
+        console.error("Bot Notification Failed:", e);
+      }
     }
     return res.json(msg);
   }
@@ -41,9 +59,8 @@ module.exports = async (req, res) => {
   // --- 3. GET DATA ---
   const { u1, u2, type, myId } = req.query;
 
-  // A. Get Specific Chat & Partner Status (Online Check)
+  // A. SPECIFIC CHAT HISTORY
   if (u1 && u2) {
-    // Messages fetch karo
     const msgs = await Message.find({
       $or: [
         { sender_id: u1, receiver_id: u2 },
@@ -51,31 +68,26 @@ module.exports = async (req, res) => {
       ]
     }).sort({ timestamp: 1 });
 
-    // Partner ka status check karo (Last Seen)
     const partner = await User.findOne({ tg_id: u2 }).select('last_seen first_name');
-    
     return res.json({ messages: msgs, partner: partner });
   }
 
-  // B. Get Recent Chat List (CRASH FIX HERE)
+  // B. RECENT CHAT LIST
   if (type === 'list' && myId) {
     const uid = Number(myId);
     
-    // Find messages involving me
     const msgs = await Message.find({
       $or: [{ sender_id: uid }, { receiver_id: uid }]
     }).sort({ timestamp: -1 }).limit(200);
 
-    const partnerIds = new Set(); // Ye sahi variable name hai
+    const partnerIds = new Set();
     msgs.forEach(m => {
-      // FIX: Pehle yahan spelling mistake thi (partnersIds)
       partnerIds.add(m.sender_id === uid ? m.receiver_id : m.sender_id);
     });
 
     const partners = Array.from(partnerIds);
     const users = await User.find({ tg_id: { $in: partners } }).lean();
 
-    // Add unread counts
     for (let user of users) {
       const count = await Message.countDocuments({
         sender_id: user.tg_id,
