@@ -79,17 +79,22 @@
         
         <div class="menu-row" style="flex-direction: column; align-items: flex-start; gap: 10px;">
           <div class="row-left" style="width: 100%; justify-content: space-between;">
-            <span style="display:flex;align-items:center;gap:10px"><span class="material-icons-round">color_lens</span> Custom Background</span>
-            <input type="color" id="bgPicker" value="#0f0f0f" style="border:none; background:none; height:30px; width:30px;">
+            <span style="display:flex;align-items:center;gap:10px">
+              <span class="material-icons-round">color_lens</span> App Background
+            </span>
+            <div style="position: relative; width: 35px; height: 35px; border-radius: 50%; overflow: hidden; border: 2px solid var(--border);">
+               <input type="color" id="bgPicker" value="#0f0f0f" style="position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; cursor: pointer;">
+            </div>
           </div>
-          <div style="display: flex; gap: 10px; align-items: center; font-size: 0.9rem; opacity: 0.8;">
-            <input type="checkbox" id="gradientToggle"> <label for="gradientToggle">Gradient Mode</label>
+          
+          <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-top: 5px;">
+            <label for="gradientToggle" style="font-size: 0.95rem; opacity: 0.8;">Enable Gradient Mode</label>
+            <input type="checkbox" id="gradientToggle" style="transform: scale(1.3); accent-color: var(--accent);"> 
           </div>
-          <button onclick="resetThemeToDefault()" style="width:100%; padding:8px; background:rgba(255,255,255,0.1); border:none; color:var(--text); border-radius:8px; margin-top:5px;">Reset to Default</button>
-        </div>
 
-        <div class="menu-row" onclick="toggleTheme()">
-          <div class="row-left"><span class="material-icons-round">brightness_6</span> Toggle Dark/Light</div>
+          <button onclick="resetThemeToDefault()" style="width:100%; padding:12px; background:rgba(255,255,255,0.08); border:none; color:var(--text); border-radius:12px; margin-top:10px; font-weight: 600;">
+            Reset to Default Theme
+          </button>
         </div>
 
         <div class="menu-row danger" onclick="Telegram.WebApp.close()">
