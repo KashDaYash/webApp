@@ -41,7 +41,7 @@ body {
   transition: background 0.3s ease;
 }
 
-/* --- GATEWAY --- */
+/* --- LOGIN GATEWAY --- */
 .login-gate {
   position: fixed; inset: 0; background: var(--bg);
   display: flex; flex-direction: column;
@@ -80,6 +80,16 @@ body {
   padding: 30px 20px; text-align: center; margin-top: 10px;
 }
 .avatar { width: 90px; height: 90px; border-radius: 50%; border: 3px solid var(--accent); object-fit: cover; }
+
+/* FIXED: Theme Toggle Button Visibility */
+.theme-btn-float {
+  position: absolute; top: 15px; right: 15px;
+  background: var(--input-bg); border: 1px solid var(--border);
+  color: var(--text); width: 40px; height: 40px; border-radius: 50%;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(5px); z-index: 100; /* Ensure it's on top */
+}
+
 .stats-row { display: flex; justify-content: center; gap: 30px; margin: 15px 0; }
 .stat-item { display: flex; flex-direction: column; }
 .stat-val { font-weight: 700; font-size: 1.1rem; }
@@ -90,7 +100,7 @@ body {
   color: var(--text); font-size: 0.9rem;
 }
 
-/* --- DISCOVER GRID (NEW) --- */
+/* --- DISCOVER GRID --- */
 .users-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -138,7 +148,7 @@ body {
 }
 .verified-badge { color: var(--accent); font-size: 1rem; margin-left: 4px; vertical-align: middle; }
 
-/* --- SETTINGS & TOGGLES --- */
+/* --- SETTINGS --- */
 .menu-list { display: flex; flex-direction: column; gap: 10px; }
 .menu-row {
   display: flex; justify-content: space-between; align-items: center;
@@ -148,7 +158,6 @@ body {
 .menu-row.danger { color: #ef4444; border-color: rgba(239,68,68,0.2); }
 .clickable-row { position: relative; overflow: hidden; }
 
-/* Color Picker */
 .color-wrapper {
   position: relative; width: 32px; height: 32px;
   border-radius: 50%; overflow: hidden;
@@ -160,7 +169,6 @@ body {
 }
 .color-preview { width: 100%; height: 100%; background: var(--accent); }
 
-/* Switch Toggle */
 .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
 .switch input { opacity: 0; width: 0; height: 0; }
 .slider {
@@ -176,17 +184,6 @@ body {
 }
 input:checked + .slider { background-color: var(--accent); }
 input:checked + .slider:before { transform: translateX(20px); }
-
-/* --- SEARCH --- */
-.search-sticky { position: sticky; top: 0; z-index: 10; background: var(--bg); padding-bottom: 10px; }
-.search-input-wrapper {
-  background: var(--input-bg); border-radius: 14px; padding: 12px 16px;
-  display: flex; align-items: center; gap: 10px; border: 1px solid var(--border);
-}
-.search-input-wrapper input {
-  background: transparent; border: none; color: var(--text);
-  width: 100%; outline: none; font-size: 1rem;
-}
 
 /* --- BOTTOM NAV --- */
 .bottom-nav {
@@ -252,6 +249,8 @@ input:checked + .slider:before { transform: translateX(20px); }
   width: 45px; height: 45px; border-radius: 50%;
   background: var(--accent); color: #fff; border: none;
   display: flex; align-items: center; justify-content: center; cursor: pointer;
+  /* FIXED: Make sure it's clickable */
+  pointer-events: auto;
 }
 .back-btn { background: none; border: none; color: var(--text); padding: 10px; cursor: pointer; }
 .header-info h3 { margin: 0; font-size: 1rem; color: var(--text); }
