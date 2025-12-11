@@ -28,6 +28,11 @@
     
     <section id="tab-profile" class="page active-page">
       <div class="profile-card">
+        
+        <button id="themeToggle" class="theme-btn-float" onclick="toggleTheme()">
+          <span class="material-icons-round">dark_mode</span>
+        </button>
+
         <div class="avatar-wrapper">
           <div id="lottie" class="lottie-glow"></div>
           <img id="userAvatar" class="avatar" src=""/>
@@ -63,14 +68,9 @@
 
     <section id="tab-discover" class="page">
       <div class="page-header"><h2>Discover</h2></div>
-      
-      <div id="discoverGrid" class="users-grid">
-        </div>
-
+      <div id="discoverGrid" class="users-grid"></div>
       <div id="loadMoreContainer" class="load-more-container hidden" style="text-align:center; padding:20px;">
-         <button onclick="loadMoreUsers()" class="gate-btn" style="width:auto; padding:8px 24px; font-size:0.9rem;">
-           Load More
-         </button>
+         <button onclick="loadMoreUsers()" class="gate-btn" style="width:auto; padding:8px 24px; font-size:0.9rem;">Load More</button>
       </div>
     </section>
 
@@ -165,7 +165,9 @@
         <span class="status">Online</span>
       </div>
     </div>
+    
     <div id="messageArea" class="messages-container"></div>
+    
     <div class="chat-input-bar">
       <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
       <button id="sendBtn" class="send-fab" onclick="sendMsg()">
