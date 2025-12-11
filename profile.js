@@ -8,14 +8,14 @@ let currentTheme = localStorage.getItem("theme") || "dark";
 let customBg = localStorage.getItem("customBg");
 let isGradient = localStorage.getItem("isGradient") === "true";
 
-// Apply Settings Immediately
+// Apply Saved Settings Instantly
 if (customBg) {
   applyCustomBg(customBg, isGradient);
 } else {
   applyTheme(currentTheme);
 }
 
-// USER DATA
+// USER
 const u = tg.initDataUnsafe?.user;
 let currentChatId = null;
 let chatPoll = null;
@@ -38,28 +38,40 @@ window.onload = () => {
   if(app) app.classList.remove("hidden");
   if(nav) nav.classList.remove("hidden");
 
-  // Load Saved Color Settings into Inputs
+  // Load Custom Settings into Inputs
   const bgPicker = document.getElementById("bgPicker");
   const gradCheck = document.getElementById("gradientToggle");
+  const colorPreview = document.getElementById("colorPreviewBox");
   
-  if(bgPicker && customBg) bgPicker.value = customBg;
+  if(bgPicker && customBg) {
+    bgPicker.value = customBg;
+    if(colorPreview) colorPreview.style.backgroundColor = customBg;
+  }
   if(gradCheck) gradCheck.checked = isGradient;
 
-  // Event Listener: Change Color Instantly
+  // --- EVENT LISTENERS (INSTANT UPDATE) ---
   if(bgPicker) {
+    // 'input' event triggers while dragging color
     bgPicker.addEventListener("input", (e) => {
       const color = e.target.value;
       const isGrad = document.getElementById("gradientToggle").checked;
+      
+      // Update Preview Box
+      if(colorPreview) colorPreview.style.backgroundColor = color;
+      
+      // Update Background Instantly
       applyCustomBg(color, isGrad);
+      
+      // Save
       localStorage.setItem("customBg", color);
     });
   }
 
-  // Event Listener: Toggle Gradient Instantly
   if(gradCheck) {
     gradCheck.addEventListener("change", (e) => {
       const color = document.getElementById("bgPicker").value;
       const isGrad = e.target.checked;
+      
       applyCustomBg(color, isGrad);
       localStorage.setItem("isGradient", isGrad);
     });
@@ -72,7 +84,6 @@ window.onload = () => {
     body: JSON.stringify(u) 
   }).catch(console.error);
 
-  // Fill UI
   if(document.getElementById("userName")) {
       document.getElementById("userName").textContent = u.first_name;
       document.getElementById("userHandle").textContent = u.username ? "@"+u.username : "—";
@@ -87,13 +98,12 @@ window.onload = () => {
 // --- THEME LOGIC ---
 function applyCustomBg(color, gradient) {
   if (gradient) {
-    // Gradient: Selected Color -> Black
-    root.style.background = `linear-gradient(135deg, ${color}, #050505)`;
+    // Beautiful Gradient: Color -> Dark Black
+    root.style.background = `linear-gradient(135deg, ${color} 0%, #000000 100%)`;
   } else {
     // Solid Color
     root.style.background = color;
   }
-  // Also set variable so other elements can adapt if needed
   root.style.setProperty('--bg', color);
 }
 
@@ -103,17 +113,17 @@ window.resetThemeToDefault = () => {
   root.style.background = ""; // Remove inline style
   applyTheme(currentTheme);
   
-  // Reset Inputs
+  // Reset UI
   document.getElementById("bgPicker").value = "#0f0f0f";
+  document.getElementById("colorPreviewBox").style.backgroundColor = "#0f0f0f";
   document.getElementById("gradientToggle").checked = false;
   
-  alert("Theme Reset!");
+  alert("Restored default theme!");
 };
 
 window.toggleTheme = () => {
-  // If custom bg is active, ask before resetting
   if(localStorage.getItem("customBg")) {
-    if(!confirm("Changing theme will reset your custom background. OK?")) return;
+    if(!confirm("Changing Theme will reset your Custom Background. Continue?")) return;
     resetThemeToDefault();
     return;
   }
@@ -140,7 +150,6 @@ function applyTheme(t) {
 window.switchTab = (tabId, navEl) => {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  
   document.getElementById(tabId).classList.add('active-page');
   navEl.classList.add('active');
 
@@ -194,11 +203,9 @@ async function loadRecentChats() {
   try {
     const res = await fetch(`/api/chat?type=list&myId=${u.id}`);
     const users = await res.json();
-    
     if(document.getElementById("friendsCount")) {
       document.getElementById("friendsCount").textContent = users.length;
     }
-
     list.innerHTML = "";
     if(!users.length) {
       if(empty) empty.classList.remove("hidden");
@@ -206,7 +213,6 @@ async function loadRecentChats() {
     }
     if(empty) empty.classList.add("hidden");
     list.classList.remove("hidden");
-
     list.innerHTML = users.map(usr => renderUserItem(usr, true)).join('');
   } catch(e){}
 }
@@ -242,7 +248,6 @@ window.openChat = async (el) => {
   if(!id) return;
 
   currentChatId = Number(id);
-  
   document.getElementById("chatPartnerName").textContent = name;
   document.getElementById("chatPartnerImg").src = photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   document.querySelector(".status").textContent = "Connecting...";
@@ -255,7 +260,6 @@ window.openChat = async (el) => {
 
   const overlay = document.getElementById("chatRoom");
   overlay.classList.add("open");
-  
   tg.BackButton.show();
   tg.BackButton.onClick(closeChat);
 
