@@ -1,89 +1,117 @@
-# 📱 Telegram Profile & Chat WebApp
+```markdown
+# 🚀 Telegram Chat Web App (Ultimate Edition)
 
-A modern, high-performance **Telegram Mini App** featuring a Glassmorphism UI, Real-time Chat, User Search, and Theme Customization. Built with Vanilla JS and Serverless Node.js functions on Vercel.
-
-![Project Banner](https://img.shields.io/badge/Telegram-WebApp-blue?style=for-the-badge&logo=telegram)
-![Status](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
+A full-featured **Telegram Mini App** for chatting, social networking, and user management. Built with **Vanilla JS (Frontend)** and **Node.js (Serverless API)**.
 
 ## ✨ Features
 
-- **🎨 Modern UI/UX:** Glassmorphism design with smooth iOS-style transitions.
-- **🔐 Telegram Auth Guard:** Automatically detects if opened in a browser and prompts to open in Telegram.
-- **👤 User Profile:** Syncs real Telegram user data (Name, Photo, ID, Username) to MongoDB.
-- **💬 Real-time Chat:**
-  - One-on-one messaging.
-  - Chat history persistence (MongoDB).
-  - Auto-scroll and "Sending..." status indicators.
-- **🔍 Smart Search:**
-  - Fuzzy search logic (finds users by name or username).
-  - **Self-Exclusion:** You won't see yourself in search results.
-- **🌙 Theme System:** Dark/Light mode toggle with local storage persistence.
-- **📱 Responsive:** Fully optimized for mobile views within Telegram.
+### 💬 Messaging System
+* **Real-time Chat:** Instant messaging with auto-refresh.
+* **Sticker Support:** Integrated **Giphy Stickers** inside the chat.
+* **Message Actions:** Long-press to **Delete** or **Copy** messages.
+* **Unread Count:** Real-time badge on chat list for unread messages.
+* **Priority Sorting:** Chats with unread messages appear at the top.
 
-## 🛠 Tech Stack
+### 🌍 Discover & Social
+* **Discover Tab:** Grid view to find all users registered in the app.
+* **Pagination:** "Load More" button to load users in batches (10 at a time).
+* **Profile Sync:** Automatically syncs Name, Username, and Photo from Telegram.
 
-- **Frontend:** HTML5, CSS3 (Variables & Animations), Vanilla JavaScript.
-- **Backend:** Node.js (Vercel Serverless Functions).
-- **Database:** MongoDB (Mongoose).
-- **Deployment:** Vercel.
+### 🎨 Customization (Premium UI)
+* **Theme Engine:** Toggle between Dark & Light mode.
+* **Custom Background:** Choose **ANY color** via Color Picker.
+* **Gradient Mode:** Enable cool gradient backgrounds.
+* **Instant Apply:** See changes immediately without reloading.
+
+### 👑 Admin & Owner Portal (Hidden)
+* **Secure Access:** Only the `OWNER_ID` can access the Admin Panel.
+* **User Management:**
+    * **Verify User:** Give/Remove Blue Tick (Verified Badge).
+    * **Ban User:** Block users from sending messages.
+    * **Delete User:** Permanently remove user & chats from DB.
+    * **Promote Admin:** Make other users Sub-Admins.
+* **Live Stats:** See total user count.
+
+---
+
+## 🛠️ Tech Stack
+
+* **Frontend:** HTML5, CSS3 (Modern Variables), Vanilla JavaScript.
+* **Backend:** Node.js (Vercel Serverless Functions).
+* **Database:** MongoDB (Atlas).
+* **Integrations:** Telegram Web Apps API, Giphy API.
+
+---
+
+## 🚀 Deployment Guide (Vercel)
+
+### 1. Prerequisite
+* A **MongoDB Atlas** Database URL.
+* A **Telegram Bot Token** (from @BotFather).
+* Your Telegram **User ID** (to set as Owner).
+
+### 2. Setup Code
+1.  Clone this repository.
+2.  Open `api/chat.js` and `api/admin.js`.
+3.  Find the line: `const OWNER_ID = 1302298741;`
+4.  **Replace** `1302298741` with **YOUR Telegram ID**.
+5.  Do the same in `profile.js` (Frontend).
+
+### 3. Deploy to Vercel
+1.  Install Vercel CLI or upload to GitHub.
+2.  Import project to Vercel.
+3.  **Add Environment Variables** in Vercel Settings:
+
+| Variable Name | Value | Description |
+| :--- | :--- | :--- |
+| `MONGO_URI` | `mongodb+srv://...` | Your MongoDB Connection String |
+| `BOT_TOKEN` | `123456:ABC...` | Your Telegram Bot Token |
+
+4.  **Deploy!** 🚀
+
+---
 
 ## 📂 Project Structure
 
-```bash
-├── api/                  # Serverless Backend
-│   ├── lib/
-│   │   ├── db.js         # Database Connection
-│   │   └── models.js     # User & Message Schema
-│   ├── chat.js           # Chat API (Send/Receive)
-│   ├── search.js         # Search API
-│   └── syncUser.js       # User Sync/Auth API
-├── profile.html          # Main Application File
-├── profile.css           # Styling & Animations
-├── profile.js            # Frontend Logic (SPA, API calls)
-├── vercel.json           # Vercel Configuration
-└── README.md             # Documentation
 ```
 
-🚀 Getting Started
-Prerequisites
- * Node.js installed.
- * A MongoDB Atlas account.
- * A Vercel account.
-1. Clone the Repository
-git clone [https://github.com/your-username/your-repo-name.git](https://github.com/your-username/your-repo-name.git)
-cd your-repo-name
+├── api/
+│   ├── lib/
+│   │   ├── db.js         \# MongoDB Connection
+│   │   └── models.js     \# User & Message Schema
+│   ├── admin.js          \# Admin Actions (Ban/Verify/Delete)
+│   ├── chat.js           \# Messaging Logic & List
+│   ├── search.js         \# Search & Discover Logic
+│   └── syncUser.js       \# Sync Telegram User to DB
+├── profile.html          \# Main UI Structure
+├── profile.css           \# Styling, Themes, Animations
+├── profile.js            \# Frontend Logic, API Calls, UI Events
+└── README.md             \# Documentation
 
-2. Install Dependencies
-Initialize npm and install Mongoose (required for backend).
-npm init -y
-npm install mongoose
+```
 
-3. Setup Environment Variables
-Create a .env file in the root (for local development) or set these in your Vercel Dashboard.
-MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/?retryWrites=true&w=majority
-BOT_TOKEN=your_telegram_bot_token
+---
 
-4. Local Development (using Vercel CLI)
-To run the serverless functions locally:
-npm i -g vercel
-vercel dev
+## 🛡️ Admin Panel Guide
 
-📦 Deployment
-This project is optimized for Vercel.
- * Push your code to GitHub.
- * Go to Vercel Dashboard and Add New Project.
- * Import your GitHub repository.
- * In the Settings > Environment Variables section, add:
-   * MONGO_URI
-   * BOT_TOKEN
- * Click Deploy.
-🔌 API Endpoints
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | /api/syncUser | Saves or updates Telegram user data in DB. |
-| GET | /api/search | Search users (Requires query & myId). |
-| GET | /api/chat | Fetch chat history (Requires u1 & u2) or List (type=list). |
-| POST | /api/chat | Send a new message. |
-🛡 License
-This project is open-source and available under the MIT License.
-Made with ❤️ for Telegram Mini Apps
+1.  Open the App in Telegram.
+2.  Go to the **Settings** tab.
+3.  If your ID matches the `OWNER_ID` in code, you will see a **"Open Admin Portal"** button at the top.
+4.  Click it to manage users.
+
+---
+
+## ⚡ API Endpoints
+
+* `POST /api/syncUser` - Create/Update user.
+* `GET /api/search` - Search users or fetch Discover grid.
+* `GET /api/chat` - Fetch chat history or recent list.
+* `POST /api/chat` - Send a text or sticker.
+* `DELETE /api/chat` - Delete a message.
+* `POST /api/admin` - Perform admin actions (Ban/Verify).
+
+---
+
+## ❤️ Credits
+Created for the **Telegram Mini App** Contest/Project.
+```
