@@ -82,9 +82,7 @@
       <div class="page-header"><h2>Settings</h2></div>
       <div class="menu-list">
         <div class="menu-row clickable-row">
-          <div class="row-left">
-            <span class="material-icons-round" style="color:#a855f7">palette</span> Change Background
-          </div>
+          <div class="row-left"><span class="material-icons-round" style="color:#a855f7">palette</span> Change Background</div>
           <div class="row-right">
             <div class="color-wrapper">
               <input type="color" id="bgPicker" value="#0f0f0f">
@@ -93,14 +91,9 @@
           </div>
         </div>
         <div class="menu-row">
-          <div class="row-left">
-            <span class="material-icons-round" style="color:#3b82f6">gradient</span> Gradient Mode
-          </div>
+          <div class="row-left"><span class="material-icons-round" style="color:#3b82f6">gradient</span> Gradient Mode</div>
           <div class="row-right">
-            <label class="switch">
-              <input type="checkbox" id="gradientToggle">
-              <span class="slider"></span>
-            </label>
+            <label class="switch"><input type="checkbox" id="gradientToggle"><span class="slider"></span></label>
           </div>
         </div>
         <div class="menu-row" onclick="resetThemeToDefault()">
@@ -143,18 +136,11 @@
     
     <div id="messageArea" class="messages-container"></div>
     
-    <div id="giphyPanel" class="sticker-picker hidden">
-      <div class="giphy-search-bar">
-        <span class="material-icons-round">search</span>
-        <input type="text" id="giphySearchInput" placeholder="Search GIPHY..." autocomplete="off">
-        <div id="giphyLogo"></div> </div>
-      <div id="giphyGrid" class="giphy-grid">
-        </div>
-    </div>
+    <div id="stickerPicker" class="sticker-picker hidden"></div>
 
     <div class="chat-input-bar">
-      <button class="icon-btn" onclick="toggleGiphyPicker()" style="margin-right:8px; color:var(--text-sec)">
-        <span class="material-icons-round">gif_box</span>
+      <button class="icon-btn" onclick="toggleStickerPicker()" style="margin-right:8px; color:var(--text-sec)">
+        <span class="material-icons-round">sentiment_satisfied_alt</span>
       </button>
 
       <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
