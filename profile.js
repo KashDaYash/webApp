@@ -2,20 +2,20 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// CONFIG
+// --- CONFIG ---
 const root = document.documentElement;
 let currentTheme = localStorage.getItem("theme") || "dark";
 let customBg = localStorage.getItem("customBg");
 let isGradient = localStorage.getItem("isGradient") === "true";
 
-// Apply saved settings
+// Apply Settings Immediately
 if (customBg) {
   applyCustomBg(customBg, isGradient);
 } else {
   applyTheme(currentTheme);
 }
 
-// USER
+// USER DATA
 const u = tg.initDataUnsafe?.user;
 let currentChatId = null;
 let chatPoll = null;
@@ -38,27 +38,30 @@ window.onload = () => {
   if(app) app.classList.remove("hidden");
   if(nav) nav.classList.remove("hidden");
 
-  // Load Custom Settings into Inputs
+  // Load Saved Color Settings into Inputs
   const bgPicker = document.getElementById("bgPicker");
   const gradCheck = document.getElementById("gradientToggle");
+  
   if(bgPicker && customBg) bgPicker.value = customBg;
   if(gradCheck) gradCheck.checked = isGradient;
 
-  // Add Event Listeners for Customizer
+  // Event Listener: Change Color Instantly
   if(bgPicker) {
     bgPicker.addEventListener("input", (e) => {
       const color = e.target.value;
       const isGrad = document.getElementById("gradientToggle").checked;
       applyCustomBg(color, isGrad);
       localStorage.setItem("customBg", color);
-      localStorage.setItem("isGradient", isGrad);
     });
   }
+
+  // Event Listener: Toggle Gradient Instantly
   if(gradCheck) {
     gradCheck.addEventListener("change", (e) => {
       const color = document.getElementById("bgPicker").value;
-      applyCustomBg(color, e.target.checked);
-      localStorage.setItem("isGradient", e.target.checked);
+      const isGrad = e.target.checked;
+      applyCustomBg(color, isGrad);
+      localStorage.setItem("isGradient", isGrad);
     });
   }
 
@@ -81,17 +84,17 @@ window.onload = () => {
   loadRecentChats();
 };
 
-// --- CUSTOM THEME LOGIC ---
+// --- THEME LOGIC ---
 function applyCustomBg(color, gradient) {
   if (gradient) {
-    // Simple Gradient: Color to Black
-    root.style.background = `linear-gradient(135deg, ${color}, #000000)`;
+    // Gradient: Selected Color -> Black
+    root.style.background = `linear-gradient(135deg, ${color}, #050505)`;
   } else {
     // Solid Color
     root.style.background = color;
-    root.style.setProperty('--bg', color);
   }
-  // Ensure text visibility based on brightness (Optional, assumed user picks dark colors)
+  // Also set variable so other elements can adapt if needed
+  root.style.setProperty('--bg', color);
 }
 
 window.resetThemeToDefault = () => {
@@ -99,8 +102,39 @@ window.resetThemeToDefault = () => {
   localStorage.removeItem("isGradient");
   root.style.background = ""; // Remove inline style
   applyTheme(currentTheme);
+  
+  // Reset Inputs
+  document.getElementById("bgPicker").value = "#0f0f0f";
+  document.getElementById("gradientToggle").checked = false;
+  
   alert("Theme Reset!");
 };
+
+window.toggleTheme = () => {
+  // If custom bg is active, ask before resetting
+  if(localStorage.getItem("customBg")) {
+    if(!confirm("Changing theme will reset your custom background. OK?")) return;
+    resetThemeToDefault();
+    return;
+  }
+  
+  currentTheme = currentTheme === "dark" ? "light" : "dark";
+  localStorage.setItem("theme", currentTheme);
+  applyTheme(currentTheme);
+};
+
+function applyTheme(t) {
+  const btn = document.querySelector(".theme-btn-float span");
+  if(t === 'light') {
+    root.classList.add('light-theme');
+    tg.setHeaderColor('#f3f4f6'); tg.setBackgroundColor('#f3f4f6');
+    if(btn) btn.textContent = "light_mode";
+  } else {
+    root.classList.remove('light-theme');
+    tg.setHeaderColor('#0f0f0f'); tg.setBackgroundColor('#0f0f0f');
+    if(btn) btn.textContent = "dark_mode";
+  }
+}
 
 // --- NAVIGATION ---
 window.switchTab = (tabId, navEl) => {
@@ -116,32 +150,6 @@ window.switchTab = (tabId, navEl) => {
     loadRecentChats();
   }
 };
-
-// --- THEME TOGGLE ---
-window.toggleTheme = () => {
-  // If custom bg is set, confirm reset
-  if(localStorage.getItem("customBg")) {
-    if(!confirm("Switching theme will reset your custom background. Continue?")) return;
-    resetThemeToDefault();
-  }
-  
-  currentTheme = currentTheme === "dark" ? "light" : "dark";
-  localStorage.setItem("theme", currentTheme);
-  applyTheme(currentTheme);
-};
-
-function applyTheme(t) {
-  const btn = document.querySelector("#themeToggle span");
-  if(t === 'light') {
-    root.classList.add('light-theme');
-    tg.setHeaderColor('#f3f4f6'); tg.setBackgroundColor('#f3f4f6');
-    if(btn) btn.textContent = "light_mode";
-  } else {
-    root.classList.remove('light-theme');
-    tg.setHeaderColor('#0f0f0f'); tg.setBackgroundColor('#0f0f0f');
-    if(btn) btn.textContent = "dark_mode";
-  }
-}
 
 // --- SEARCH ---
 const sInput = document.getElementById("userSearch");
@@ -256,7 +264,6 @@ window.openChat = async (el) => {
   chatPoll = setInterval(loadMsgs, 3000);
 };
 
-// ** FIXED CLOSE CHAT FUNCTION **
 window.closeChat = () => {
   document.getElementById("chatRoom").classList.remove("open");
   tg.BackButton.hide();
