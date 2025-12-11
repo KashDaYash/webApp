@@ -12,6 +12,7 @@ const u = tg.initDataUnsafe?.user;
 let currentChatId = null;
 let chatPoll = null;
 
+// --- INITIALIZATION ---
 window.onload = () => {
   const gate = document.getElementById("loginGate");
   const app = document.getElementById("app");
@@ -29,12 +30,14 @@ window.onload = () => {
   if(app) app.classList.remove("hidden");
   if(nav) nav.classList.remove("hidden");
 
+  // Sync to DB
   fetch('/api/syncUser', { 
     method: 'POST', 
     headers: {'Content-Type': 'application/json'}, 
     body: JSON.stringify(u) 
   }).catch(console.error);
 
+  // Update UI
   if(document.getElementById("userName")) {
       document.getElementById("userName").textContent = u.first_name;
       document.getElementById("userHandle").textContent = u.username ? "@"+u.username : "—";
@@ -44,7 +47,7 @@ window.onload = () => {
 
   setTimeout(() => { if(loader) loader.style.display = "none"; }, 500);
 
-  loadRecentChats(); // Initial Load
+  loadRecentChats();
 };
 
 // --- NAVIGATION ---
@@ -58,7 +61,7 @@ window.switchTab = (tabId, navEl) => {
   if(tabId === 'tab-chat') {
     document.getElementById("userSearch").value = "";
     document.getElementById("suggestionList").innerHTML = "";
-    loadRecentChats(); // Refresh list to update unread counts
+    loadRecentChats();
   }
 };
 
@@ -107,6 +110,7 @@ async function doSearch(query) {
     const res = await fetch(`/api/search?query=${query}&myId=${u.id}`);
     const rawData = await res.json();
     const data = rawData.filter(user => Number(user.tg_id) !== Number(u.id));
+    
     if(data.length === 0) {
       sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5">No users found</div>`;
       return;
@@ -115,7 +119,7 @@ async function doSearch(query) {
   } catch(e) { sug.innerHTML = "Error"; }
 }
 
-// --- RECENT CHATS (With Badge Logic) ---
+// --- RECENT CHATS ---
 async function loadRecentChats() {
   const list = document.getElementById("recentChatsList");
   const empty = document.getElementById("emptyChatState");
@@ -125,7 +129,7 @@ async function loadRecentChats() {
     const res = await fetch(`/api/chat?type=list&myId=${u.id}`);
     const users = await res.json();
     
-    // Update Profile Stats
+    // Update Stats
     if(document.getElementById("friendsCount")) {
       document.getElementById("friendsCount").textContent = users.length;
     }
@@ -142,9 +146,7 @@ async function loadRecentChats() {
   } catch(e){}
 }
 
-// Helper to render user row
 function renderUserItem(usr, showBadge = false) {
-  // Badge HTML
   const badgeHtml = (showBadge && usr.unread_count > 0) 
     ? `<div class="unread-badge">${usr.unread_count}</div>` 
     : `<span class="material-icons-round" style="color:var(--accent)">chevron_right</span>`;
@@ -167,7 +169,7 @@ function renderUserItem(usr, showBadge = false) {
   `;
 }
 
-// --- CHAT LOGIC ---
+// --- CHAT OPEN LOGIC ---
 window.openChat = async (el) => {
   const id = el.getAttribute("data-id");
   const name = el.getAttribute("data-name");
@@ -176,10 +178,10 @@ window.openChat = async (el) => {
 
   currentChatId = Number(id);
   
-  // Header Update
+  // UI Update
   document.getElementById("chatPartnerName").textContent = name;
   document.getElementById("chatPartnerImg").src = photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-  document.querySelector(".status").textContent = "Connecting..."; // Temp status
+  document.querySelector(".status").textContent = "Connecting...";
 
   // Mark Read
   fetch('/api/chat', {
@@ -188,7 +190,6 @@ window.openChat = async (el) => {
     body: JSON.stringify({ myId: u.id, partnerId: currentChatId })
   });
 
-  // Open Overlay
   const overlay = document.getElementById("chatRoom");
   overlay.classList.add("open");
   
@@ -197,60 +198,62 @@ window.openChat = async (el) => {
 
   loadMsgs();
   if(chatPoll) clearInterval(chatPoll);
-  chatPoll = setInterval(loadMsgs, 3000); // 3 sec polling for Realtime/Online status
+  chatPoll = setInterval(loadMsgs, 3000);
+};
+
+window.closeChat = () => {
+  document.getElementById("chatRoom").classList.remove("open");
+  tg.BackButton.hide();
+  tg.BackButton.offClick(closeChat); // Prevent double firing
+  clearInterval(chatPoll);
+  currentChatId = null;
+  loadRecentChats(); // Refresh badges
 };
 
 async function loadMsgs() {
   if(!currentChatId) return;
   try {
     const res = await fetch(`/api/chat?u1=${u.id}&u2=${currentChatId}`);
-    const data = await res.json(); // Ab ye object return karega {messages: [], partner: {}}
+    const data = await res.json();
     
     const msgs = data.messages || [];
     const partner = data.partner || {};
 
-    // --- ONLINE STATUS LOGIC ---
+    // Online Status
     const statusEl = document.querySelector(".status");
     if (partner.last_seen) {
-      const lastSeen = new Date(partner.last_seen).getTime();
+      const last = new Date(partner.last_seen).getTime();
       const now = new Date().getTime();
-      const diff = (now - lastSeen) / 1000; // seconds
+      const diff = (now - last) / 1000;
       
-      // Agar 120 seconds (2 min) se kam hai to Online
       if (diff < 120) {
         statusEl.textContent = "🟢 Online";
-        statusEl.style.color = "#4ade80"; // Green
+        statusEl.style.color = "#4ade80";
       } else {
-        // Show Time
-        const timeStr = new Date(partner.last_seen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        statusEl.textContent = `Last seen: ${timeStr}`;
+        const t = new Date(partner.last_seen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        statusEl.textContent = `Last seen: ${t}`;
         statusEl.style.color = "var(--text-sec)";
       }
     }
 
-    // Render Messages
     const box = document.getElementById("messageArea");
     const isBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 150;
     
     box.innerHTML = msgs.map(m => {
       const t = new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
       const isMe = m.sender_id == u.id;
-      // Double check mark for read
       const checks = isMe ? (m.is_read ? '✓✓' : '✓') : '';
       
       return `
         <div class="msg ${isMe ? 'out' : 'in'}">
           ${m.text}
-          <span class="msg-time">
-            ${t} <span style="margin-left:3px">${checks}</span>
-          </span>
+          <span class="msg-time">${t} <span style="margin-left:3px">${checks}</span></span>
         </div>`;
     }).join('');
 
     if(isBottom || msgs.length < 5) box.scrollTop = box.scrollHeight;
-  } catch(e){ console.error(e); }
+  } catch(e){}
 }
-
 
 window.sendMsg = async () => {
   const inp = document.getElementById("msgInput");
