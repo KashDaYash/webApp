@@ -11,22 +11,26 @@ let isGradient = localStorage.getItem("isGradient") === "true";
 if (customBg) { applyCustomBg(customBg, isGradient); } 
 else { applyTheme(currentTheme); }
 
-// --- USER ---
+// --- USER DATA ---
 const u = tg.initDataUnsafe?.user;
 const OWNER_ID = 1302298741; 
+
+// --- GIPHY CONFIG ---
+const GIPHY_API_KEY = "UAkjwtiLtcGswaMkOHfmT333vuWxJAsZ"; // Aapki ID
 
 let currentChatId = null;
 let chatPoll = null;
 let discoverPage = 1;
 let currentUserData = null;
 
-// --- INIT ---
+// --- INITIALIZATION ---
 window.onload = () => {
   const gate = document.getElementById("loginGate");
   const app = document.getElementById("app");
   const nav = document.getElementById("bottomNav");
   const loader = document.getElementById("loadingScreen");
 
+  // 1. GATEWAY CHECK
   if (!u || !u.id) {
     if(loader) loader.style.display = "none";
     if(gate) gate.classList.remove("hidden");
@@ -38,10 +42,11 @@ window.onload = () => {
   if(app) app.classList.remove("hidden");
   if(nav) nav.classList.remove("hidden");
 
-  // Load Theme UI
+  // 2. THEME INIT
   const bgPicker = document.getElementById("bgPicker");
   const gradCheck = document.getElementById("gradientToggle");
   const colorPreview = document.getElementById("colorPreviewBox");
+  
   if(bgPicker && customBg) {
     bgPicker.value = customBg;
     if(colorPreview) colorPreview.style.backgroundColor = customBg;
@@ -65,8 +70,10 @@ window.onload = () => {
     });
   }
 
+  // 3. SYNC
   syncUserAndCheckPermissions();
 
+  // 4. UI FILL
   if(document.getElementById("userName")) {
       document.getElementById("userName").textContent = u.first_name;
       document.getElementById("userHandle").textContent = u.username ? "@"+u.username : "—";
@@ -79,6 +86,10 @@ window.onload = () => {
   
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.msg')) removeContextMenu();
+    // Close sticker picker if clicked outside
+    if (!e.target.closest('.sticker-picker') && !e.target.closest('.icon-btn')) {
+        document.getElementById("stickerPicker").classList.add("hidden");
+    }
   });
 };
 
@@ -105,6 +116,94 @@ async function syncUserAndCheckPermissions() {
     }
   } catch(e) { console.error(e); }
 }
+
+// --- GIPHY STICKER LOGIC ---
+window.toggleStickerPicker = () => {
+  const picker = document.getElementById("stickerPicker");
+  picker.classList.toggle("hidden");
+  
+  // Load trending if empty
+  if (!picker.classList.contains("hidden") && picker.innerHTML.trim() === "") {
+     loadGiphyStickers(); // Load Trending
+  }
+};
+
+async function loadGiphyStickers(query = "") {
+  const picker = document.getElementById("stickerPicker");
+  picker.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:0.5;padding:20px">Loading Giphy...</div>`;
+  
+  try {
+    let url = "";
+    if(query) {
+        url = `https://api.giphy.com/v1/stickers/search?api_key=${GIPHY_API_KEY}&q=${query}&limit=20&rating=g`;
+    } else {
+        url = `https://api.giphy.com/v1/stickers/trending?api_key=${GIPHY_API_KEY}&limit=20&rating=g`;
+    }
+
+    const res = await fetch(url);
+    const data = await res.json();
+    
+    // Add Search Input inside Picker (Only once)
+    let searchHTML = `
+      <div style="grid-column:1/-1; padding-bottom:10px; position:sticky; top:0; z-index:20;">
+        <input type="text" placeholder="Search Giphy..." 
+               style="width:100%; padding:8px; border-radius:12px; border:none; background:rgba(0,0,0,0.2); color:var(--text); outline:none;"
+               onkeypress="if(event.key === 'Enter') loadGiphyStickers(this.value)">
+      </div>
+    `;
+
+    if (data.data.length === 0) {
+        picker.innerHTML = searchHTML + `<div style="grid-column:1/-1;text-align:center;opacity:0.5">No stickers found</div>`;
+        return;
+    }
+
+    const stickersHTML = data.data.map(gif => `
+      <img src="${gif.images.fixed_height.url}" 
+           class="sticker-item" 
+           onclick="sendSticker('${gif.images.fixed_height.url}')"
+           loading="lazy">
+    `).join('');
+
+    picker.innerHTML = searchHTML + stickersHTML;
+
+  } catch(e) {
+    console.error(e);
+    picker.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:red">Failed to load Giphy</div>`;
+  }
+}
+
+// Make loadGiphyStickers global for the search input
+window.loadGiphyStickers = loadGiphyStickers;
+
+window.sendSticker = async (url) => {
+  document.getElementById("stickerPicker").classList.add("hidden");
+  
+  if(!currentChatId) return;
+
+  const box = document.getElementById("messageArea");
+  const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  
+  // Optimistic UI
+  box.innerHTML += `
+    <div class="msg out sticker">
+      <img src="${url}">
+      <span class="msg-time" style="color:rgba(255,255,255,0.7); text-shadow:0 1px 2px black;">${t}</span>
+    </div>`;
+  box.scrollTop = box.scrollHeight;
+
+  await fetch('/api/chat', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      sender_id: u.id, 
+      receiver_id: currentChatId, 
+      type: 'sticker', 
+      media: url
+    })
+  });
+  
+  loadMsgs();
+};
 
 // --- DISCOVER LOGIC ---
 window.loadDiscoverUsers = async (reset = false) => {
@@ -263,7 +362,7 @@ window.filterAdminList = () => {
   });
 };
 
-// --- NAVIGATION & THEME ---
+// --- THEME ---
 window.resetThemeToDefault = () => {
   localStorage.removeItem("customBg");
   localStorage.removeItem("isGradient");
@@ -274,12 +373,37 @@ window.resetThemeToDefault = () => {
   alert("Theme Reset!");
 };
 
+window.toggleTheme = () => {
+  if(localStorage.getItem("customBg")) {
+    if(!confirm("Changing Theme will reset your Custom Background. Continue?")) return;
+    resetThemeToDefault();
+    return;
+  }
+  currentTheme = currentTheme === "dark" ? "light" : "dark";
+  localStorage.setItem("theme", currentTheme);
+  applyTheme(currentTheme);
+};
+
+function applyTheme(t) {
+  const btn = document.querySelector("#themeToggle span");
+  if(t === 'light') {
+    root.classList.add('light-theme');
+    tg.setHeaderColor('#f3f4f6'); tg.setBackgroundColor('#f3f4f6');
+    if(btn) btn.textContent = "light_mode";
+  } else {
+    root.classList.remove('light-theme');
+    tg.setHeaderColor('#0f0f0f'); tg.setBackgroundColor('#0f0f0f');
+    if(btn) btn.textContent = "dark_mode";
+  }
+}
+
 function applyCustomBg(color, gradient) {
   if (gradient) root.style.background = `linear-gradient(135deg, ${color} 0%, #000000 100%)`;
   else root.style.background = color;
   root.style.setProperty('--bg', color);
 }
 
+// --- NAV ---
 window.switchTab = (tabId, navEl) => {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -301,7 +425,7 @@ window.switchTab = (tabId, navEl) => {
   }
 };
 
-// --- CHAT LOGIC (Send/Receive) ---
+// --- CHAT SEARCH ---
 const sInput = document.getElementById("userSearch");
 let sTimer;
 if(sInput) {
@@ -381,6 +505,7 @@ function renderUserItem(usr, showBadge = false) {
   `;
 }
 
+// --- CHAT WINDOW ---
 window.openChat = async (el) => {
   const id = el.getAttribute("data-id");
   const name = el.getAttribute("data-name");
@@ -454,12 +579,24 @@ async function loadMsgs() {
       const t = new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
       const isMe = m.sender_id == u.id;
       const checks = isMe ? (m.is_read ? '✓✓' : '✓') : '';
+      
+      // Sticker or Text Logic
+      let content = '';
+      let msgClass = isMe ? 'out' : 'in';
+      
+      if (m.type === 'sticker') {
+        msgClass += ' sticker';
+        content = `<img src="${m.media}">`;
+      } else {
+        content = m.text;
+      }
+
       return `
-        <div class="msg ${isMe ? 'out' : 'in'}" 
+        <div class="msg ${msgClass}" 
              data-msg-id="${m._id}" 
              oncontextmenu="showContextMenu(event, this, ${isMe})">
-          ${m.text}
-          <span class="msg-time">${t} <span style="margin-left:3px">${checks}</span></span>
+          ${content}
+          <span class="msg-time" style="${m.type==='sticker'?'color:rgba(255,255,255,0.7);text-shadow:0 1px 2px black':''}">${t} <span style="margin-left:3px">${checks}</span></span>
         </div>`;
     }).join('');
 
@@ -473,6 +610,8 @@ window.showContextMenu = (e, el, isMe) => {
   const menu = document.createElement("div");
   menu.className = "context-menu";
   const msgId = el.getAttribute("data-msg-id");
+  
+  // Basic Text copy if it's text
   const text = el.innerText.split("\n")[0]; 
 
   menu.innerHTML = `
@@ -511,18 +650,19 @@ window.deleteMessage = async (msgId) => {
   } catch(e) { alert("Failed to delete"); }
 };
 
-// ** FINAL SEND FIX **
 window.sendMsg = async () => {
   const inp = document.getElementById("msgInput");
   const txt = inp.value.trim();
   
-  // Explicit check for chat ID
   if(!txt || !currentChatId) {
-      console.log("Cannot send: No text or No Chat ID selected");
+      console.log("Send cancelled: Empty text or no active chat");
       return;
   }
 
+  // Clear Input
   inp.value = "";
+  
+  // Optimistic UI
   const box = document.getElementById("messageArea");
   const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   box.innerHTML += `<div class="msg out" style="opacity:0.7">${txt}<span class="msg-time">${t}</span></div>`;
@@ -535,9 +675,8 @@ window.sendMsg = async () => {
   });
   
   if(!res.ok) {
-      // If error (like banned), show alert
-      const errData = await res.json();
-      if(errData.error) alert(errData.error);
+      const err = await res.json();
+      if(err.error) alert(err.error);
   }
   
   loadMsgs();
