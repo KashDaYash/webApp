@@ -168,19 +168,15 @@ body {
 }
 .nav-item span { font-size: 28px; }
 
-/* =============================================
-   🔥🔥 CHAT OVERLAY SYSTEM (GHOST FIX) 🔥🔥
-   =============================================
-*/
-
+/* --- CHAT OVERLAY FIX --- */
 .chat-room-overlay {
   position: fixed;
   top: 0; left: 0; width: 100%; height: 100%;
-  background: var(--bg); /* Solid Background is critical */
-  z-index: 200; /* Higher than Bottom Nav */
+  background: var(--bg); /* Solid Background */
+  z-index: 200; /* Settings se upar */
   display: flex; flex-direction: column;
   
-  /* Slide Animation */
+  /* Start Position */
   transform: translateX(100%);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   
@@ -190,22 +186,19 @@ body {
 
 .chat-room-overlay.open {
   transform: translateX(0);
-  visibility: visible;
+  visibility: visible; /* Sirf tab dikhe jab open ho */
 }
 
-/* Header inside Overlay (Absolute positioning locks it to overlay) */
+/* Header Lock */
 .chat-room-header {
   position: absolute; top: 0; left: 0; width: 100%; height: 60px;
-  background: var(--nav-bg);
+  background: var(--nav-bg); 
   border-bottom: 1px solid var(--border);
   display: flex; align-items: center; gap: 10px; padding: 0 10px;
   box-sizing: border-box; z-index: 10;
 }
-.back-btn { background: none; border: none; color: var(--text); padding: 10px; cursor: pointer; }
-.header-info h3 { margin: 0; font-size: 1rem; color: var(--text); }
-.header-avatar { width: 34px; height: 34px; border-radius: 50%; }
 
-/* Input Bar inside Overlay (Absolute positioning locks it to overlay bottom) */
+/* Input Lock */
 .chat-input-bar {
   position: absolute; bottom: 0; left: 0; width: 100%;
   padding: 10px; padding-bottom: env(safe-area-inset-bottom);
@@ -213,25 +206,15 @@ body {
   display: flex; gap: 10px; align-items: center;
   box-sizing: border-box; z-index: 10;
 }
-.chat-input-bar input {
-  flex: 1; padding: 12px; border-radius: 25px;
-  background: var(--input-bg); border: none; color: var(--text); outline: none;
-}
-.send-fab {
-  width: 45px; height: 45px; border-radius: 50%;
-  background: var(--accent); color: #fff; border: none;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-}
 
-/* Scrollable Messages Area */
+/* Message Scroll Area */
 .messages-container {
   flex: 1; overflow-y: auto;
-  /* Top padding = Header (60) + Space (10) */
-  /* Bottom padding = Input (70) + Space (10) */
+  /* Header aur Input ke liye jagah */
   padding: 70px 15px 80px 15px;
   display: flex; flex-direction: column; gap: 6px;
 }
+
 
 /* Message Bubbles */
 .msg {
