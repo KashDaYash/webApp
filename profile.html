@@ -63,8 +63,15 @@
 
     <section id="tab-discover" class="page">
       <div class="page-header"><h2>Discover</h2></div>
+      
       <div id="discoverGrid" class="users-grid">
         </div>
+
+      <div id="loadMoreContainer" class="load-more-container hidden" style="text-align:center; padding:20px;">
+         <button onclick="loadMoreUsers()" class="gate-btn" style="width:auto; padding:8px 24px; font-size:0.9rem;">
+           Load More
+         </button>
+      </div>
     </section>
 
     <section id="tab-notif" class="page">
@@ -137,7 +144,8 @@
       <span class="material-icons-round">chat_bubble</span>
     </div>
     <div class="nav-item" onclick="switchTab('tab-discover', this)">
-      <span class="material-icons-round">explore</span> </div>
+      <span class="material-icons-round">explore</span>
+    </div>
     <div class="nav-item" onclick="switchTab('tab-notif', this)">
       <span class="material-icons-round">notifications</span>
     </div>
