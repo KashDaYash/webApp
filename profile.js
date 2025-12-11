@@ -11,23 +11,22 @@ let isGradient = localStorage.getItem("isGradient") === "true";
 if (customBg) { applyCustomBg(customBg, isGradient); } 
 else { applyTheme(currentTheme); }
 
-// --- USER DATA ---
+// --- USER ---
 const u = tg.initDataUnsafe?.user;
-// ➤ OWNER ID (Supreme Power)
 const OWNER_ID = 1302298741; 
 
 let currentChatId = null;
 let chatPoll = null;
-let discoverPage = 1; // For Pagination
+let discoverPage = 1;
+let currentUserData = null;
 
-// --- INITIALIZATION ---
+// --- INIT ---
 window.onload = () => {
   const gate = document.getElementById("loginGate");
   const app = document.getElementById("app");
   const nav = document.getElementById("bottomNav");
   const loader = document.getElementById("loadingScreen");
 
-  // 1. GATEWAY CHECK
   if (!u || !u.id) {
     if(loader) loader.style.display = "none";
     if(gate) gate.classList.remove("hidden");
@@ -39,11 +38,10 @@ window.onload = () => {
   if(app) app.classList.remove("hidden");
   if(nav) nav.classList.remove("hidden");
 
-  // 2. THEME INIT
+  // Load Theme UI
   const bgPicker = document.getElementById("bgPicker");
   const gradCheck = document.getElementById("gradientToggle");
   const colorPreview = document.getElementById("colorPreviewBox");
-  
   if(bgPicker && customBg) {
     bgPicker.value = customBg;
     if(colorPreview) colorPreview.style.backgroundColor = customBg;
@@ -67,10 +65,8 @@ window.onload = () => {
     });
   }
 
-  // 3. SYNC & PERMISSIONS
   syncUserAndCheckPermissions();
 
-  // 4. UI FILL
   if(document.getElementById("userName")) {
       document.getElementById("userName").textContent = u.first_name;
       document.getElementById("userHandle").textContent = u.username ? "@"+u.username : "—";
@@ -79,9 +75,8 @@ window.onload = () => {
   }
 
   setTimeout(() => { if(loader) loader.style.display = "none"; }, 500);
-  loadRecentChats(); // Initial Load
+  loadRecentChats();
   
-  // Close context menu logic
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.msg')) removeContextMenu();
   });
@@ -94,25 +89,24 @@ async function syncUserAndCheckPermissions() {
       headers: {'Content-Type': 'application/json'}, 
       body: JSON.stringify(u) 
     });
-    const userData = await res.json();
+    currentUserData = await res.json();
 
-    // Show Admin Button if Owner or Admin
-    if (userData.tg_id === OWNER_ID || userData.is_admin) {
+    if (currentUserData.tg_id === OWNER_ID || currentUserData.is_admin) {
       injectAdminButton();
     }
     
-    if (userData.is_banned) {
-      alert("You are BANNED from using this app.");
+    if (currentUserData.is_banned) {
+      alert("You are BANNED.");
       Telegram.WebApp.close();
     }
 
-    if (userData.is_verified) {
+    if (currentUserData.is_verified) {
        document.getElementById("userName").innerHTML += ` <span class="material-icons-round verified-badge" style="vertical-align:middle; font-size:1.2rem;">verified</span>`;
     }
   } catch(e) { console.error(e); }
 }
 
-// --- DISCOVER LOGIC (NEW) ---
+// --- DISCOVER LOGIC ---
 window.loadDiscoverUsers = async (reset = false) => {
   const grid = document.getElementById("discoverGrid");
   const btnContainer = document.getElementById("loadMoreContainer");
@@ -124,7 +118,6 @@ window.loadDiscoverUsers = async (reset = false) => {
   }
 
   try {
-    // Fetch users (empty query = all users)
     const res = await fetch(`/api/search?query=&page=${discoverPage}&myId=${u.id}`);
     const users = await res.json();
 
@@ -134,7 +127,6 @@ window.loadDiscoverUsers = async (reset = false) => {
       return;
     }
 
-    // Append Users
     const html = users.map(user => `
       <div class="grid-user-card" onclick="openChat(this)"
            data-id="${user.tg_id}" 
@@ -151,7 +143,6 @@ window.loadDiscoverUsers = async (reset = false) => {
 
     grid.insertAdjacentHTML('beforeend', html);
 
-    // Show/Hide Load More Button
     if (users.length === 10) {
       btnContainer.classList.remove("hidden");
     } else {
@@ -166,7 +157,7 @@ window.loadMoreUsers = () => {
   loadDiscoverUsers(false);
 };
 
-// --- ADMIN PANEL LOGIC ---
+// --- ADMIN LOGIC ---
 function injectAdminButton() {
   const menuList = document.querySelector("#tab-settings .menu-list");
   if(!menuList || document.getElementById("adminPortalBtn")) return;
@@ -206,17 +197,14 @@ async function loadAdminData() {
     }
 
     if(document.getElementById("totalUsers")) document.getElementById("totalUsers").textContent = users.length;
-    
     const isMeOwner = (u.id === OWNER_ID);
 
     list.innerHTML = users.map(user => {
       const isTargetOwner = (user.tg_id === OWNER_ID);
-      
-      // Admin Button (Only Owner sees this)
       let adminBtn = '';
       if (isMeOwner && !isTargetOwner) {
         adminBtn = `<button onclick="adminAction('toggle_admin', ${user.tg_id})" style="padding:6px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:0.8rem;margin-left:auto">
-          ${user.is_admin ? 'Demote' : 'Promote Admin'}
+          ${user.is_admin ? 'Demote' : 'Make Admin'}
         </button>`;
       }
 
@@ -237,29 +225,24 @@ async function loadAdminData() {
           </div>
           ${adminBtn}
         </div>
-        
         <div style="display:flex; gap:8px; width:100%;">
           <button onclick="adminAction('toggle_verify', ${user.tg_id})" style="flex:1; padding:8px; border-radius:8px; border:none; background:${user.is_verified ? 'var(--card-bg)' : '#3b82f6'}; color:${user.is_verified ? 'var(--text)' : 'white'}; border:1px solid var(--border)">
             ${user.is_verified ? 'Unverify' : 'Verify'}
           </button>
-          
           <button onclick="adminAction('toggle_ban', ${user.tg_id})" style="flex:1; padding:8px; border-radius:8px; border:none; background:${user.is_banned ? '#4ade80' : '#ef4444'}; color:white;">
             ${user.is_banned ? 'Unban' : 'Ban'}
           </button>
-
           <button onclick="adminAction('delete_user', ${user.tg_id})" style="padding:8px 12px; border-radius:8px; border:1px solid #ef4444; background:transparent; color:#ef4444;">
             <span class="material-icons-round" style="font-size:1.1rem; vertical-align:middle">delete</span>
           </button>
         </div>
       </div>
     `}).join('');
-
   } catch(e) { list.innerHTML = "API Error"; }
 }
 
 window.adminAction = async (action, targetId) => {
   if (action === 'delete_user' && !confirm("Permanently Delete User?")) return;
-  
   try {
     const res = await fetch('/api/admin', {
       method: 'POST',
@@ -267,7 +250,6 @@ window.adminAction = async (action, targetId) => {
       body: JSON.stringify({ requester_id: u.id, target_id: targetId, action: action })
     });
     const data = await res.json();
-    
     if(data.error) alert(data.error);
     else loadAdminData(); 
   } catch(e) { alert("Action Failed"); }
@@ -281,32 +263,7 @@ window.filterAdminList = () => {
   });
 };
 
-// --- NAVIGATION ---
-window.switchTab = (tabId, navEl) => {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  
-  document.getElementById(tabId).classList.add('active-page');
-  
-  if(navEl) navEl.classList.add('active');
-  else {
-      // Auto highlight for non-click navigation
-      const map = {'tab-profile':0, 'tab-chat':1, 'tab-discover':2, 'tab-notif':3, 'tab-settings':4};
-      if(map[tabId] !== undefined) document.querySelectorAll('.nav-item')[map[tabId]].classList.add('active');
-  }
-
-  // Tab Specific Logic
-  if(tabId === 'tab-chat') {
-    document.getElementById("userSearch").value = "";
-    document.getElementById("suggestionList").innerHTML = "";
-    loadRecentChats();
-  }
-  if(tabId === 'tab-discover') {
-    loadDiscoverUsers(true); // Reset and Load
-  }
-};
-
-// --- STANDARD FEATURES ---
+// --- NAVIGATION & THEME ---
 window.resetThemeToDefault = () => {
   localStorage.removeItem("customBg");
   localStorage.removeItem("isGradient");
@@ -317,37 +274,34 @@ window.resetThemeToDefault = () => {
   alert("Theme Reset!");
 };
 
-window.toggleTheme = () => {
-  if(localStorage.getItem("customBg")) {
-    if(!confirm("Reset Custom Background?")) return;
-    resetThemeToDefault();
-    return;
-  }
-  currentTheme = currentTheme === "dark" ? "light" : "dark";
-  localStorage.setItem("theme", currentTheme);
-  applyTheme(currentTheme);
-};
-
-function applyTheme(t) {
-  const btn = document.querySelector(".theme-btn-float span");
-  if(t === 'light') {
-    root.classList.add('light-theme');
-    tg.setHeaderColor('#f3f4f6'); tg.setBackgroundColor('#f3f4f6');
-    if(btn) btn.textContent = "light_mode";
-  } else {
-    root.classList.remove('light-theme');
-    tg.setHeaderColor('#0f0f0f'); tg.setBackgroundColor('#0f0f0f');
-    if(btn) btn.textContent = "dark_mode";
-  }
-}
-
 function applyCustomBg(color, gradient) {
   if (gradient) root.style.background = `linear-gradient(135deg, ${color} 0%, #000000 100%)`;
   else root.style.background = color;
   root.style.setProperty('--bg', color);
 }
 
-// --- SEARCH & RECENT ---
+window.switchTab = (tabId, navEl) => {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active-page');
+  
+  if(navEl) navEl.classList.add('active');
+  else {
+      const map = {'tab-profile':0, 'tab-chat':1, 'tab-discover':2, 'tab-notif':3, 'tab-settings':4};
+      if(map[tabId] !== undefined) document.querySelectorAll('.nav-item')[map[tabId]].classList.add('active');
+  }
+
+  if(tabId === 'tab-chat') {
+    document.getElementById("userSearch").value = "";
+    document.getElementById("suggestionList").innerHTML = "";
+    loadRecentChats();
+  }
+  if(tabId === 'tab-discover') {
+    loadDiscoverUsers(true);
+  }
+};
+
+// --- CHAT LOGIC (Send/Receive) ---
 const sInput = document.getElementById("userSearch");
 let sTimer;
 if(sInput) {
@@ -372,10 +326,7 @@ async function doSearch(query) {
   try {
     const res = await fetch(`/api/search?query=${query}&myId=${u.id}`);
     const users = await res.json();
-    
-    // Sort logic handled in backend now, but filter self just in case
     const data = users.filter(user => Number(user.tg_id) !== Number(u.id));
-    
     if(data.length === 0) {
       sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5">No users found</div>`;
       return;
@@ -430,7 +381,6 @@ function renderUserItem(usr, showBadge = false) {
   `;
 }
 
-// --- CHAT WINDOW ---
 window.openChat = async (el) => {
   const id = el.getAttribute("data-id");
   const name = el.getAttribute("data-name");
@@ -482,7 +432,6 @@ async function loadMsgs() {
     const msgs = data.messages || [];
     const partner = data.partner || {};
 
-    // Status logic
     const statusEl = document.querySelector(".status");
     if (partner.last_seen) {
       const last = new Date(partner.last_seen).getTime();
@@ -562,14 +511,14 @@ window.deleteMessage = async (msgId) => {
   } catch(e) { alert("Failed to delete"); }
 };
 
+// ** FINAL SEND FIX **
 window.sendMsg = async () => {
   const inp = document.getElementById("msgInput");
   const txt = inp.value.trim();
-  if(!txt || !currentChatId) return;
   
-  // Check if current user is banned locally (quick check)
-  if(currentUserData && currentUserData.is_banned) {
-      alert("You are banned!");
+  // Explicit check for chat ID
+  if(!txt || !currentChatId) {
+      console.log("Cannot send: No text or No Chat ID selected");
       return;
   }
 
@@ -586,8 +535,9 @@ window.sendMsg = async () => {
   });
   
   if(!res.ok) {
-      const err = await res.json();
-      if(err.error) alert(err.error);
+      // If error (like banned), show alert
+      const errData = await res.json();
+      if(errData.error) alert(errData.error);
   }
   
   loadMsgs();
