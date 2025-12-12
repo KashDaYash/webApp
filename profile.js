@@ -61,6 +61,7 @@ function updateProfileUI() {
   // Character Info
   const charName = userData.character_name || "Novice";
   document.getElementById("heroCharName").innerText = `${charName} (Lvl ${userData.level || 1})`;
+  
   const charImg = userData.character_image || userData.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   document.getElementById("profileAvatar").src = charImg;
 
@@ -175,7 +176,7 @@ window.searchNextMonster = async () => {
     currentBattle = { monster: data.monster, currentMonsterHp: data.monster.hp };
     
     document.getElementById("monsterName").innerText = data.monster.name;
-    document.getElementById("monsterImage").src = data.monster.image_url || data.monster.img;
+    document.getElementById("monsterImage").src = data.monster.image_url || data.monster.img || "https://placehold.co/150";
     document.getElementById("monsterHpBar").style.width = "100%";
     
     log.innerHTML = `<div class="log-entry">✨ Found: <b>${data.monster.name}</b></div>`;
@@ -189,7 +190,7 @@ window.beginFight = () => {
   logBattle(`⚔️ Battle Started with ${currentBattle.monster.name}!`);
 };
 
-// 4. Combat Logic
+// 4. Combat Logic (Attack, Dodge, Heal, Flee)
 window.combatAction = async (type) => {
   if(!currentBattle || currentBattle.currentMonsterHp <= 0) return;
 
@@ -203,6 +204,7 @@ window.combatAction = async (type) => {
     });
     const result = await res.json();
     
+    // Update Stats
     showDamage(result.dmg_dealt);
     userData.hp = result.user_hp;
     userData.coins = result.user_coins;
@@ -211,11 +213,13 @@ window.combatAction = async (type) => {
     if(result.dmg_taken > 0) logBattle(`💔 Took ${result.dmg_taken} dmg.`);
     if(result.msg) logBattle(result.msg);
 
+    // Update Monster HP (Visual)
     currentBattle.currentMonsterHp -= result.dmg_dealt;
     const maxHp = currentBattle.monster.max_hp || currentBattle.monster.hp;
     const pct = Math.max(0, (currentBattle.currentMonsterHp / maxHp) * 100);
     document.getElementById("monsterHpBar").style.width = `${pct}%`;
 
+    // Check Outcome
     if (currentBattle.currentMonsterHp <= 0) {
         // WIN
         const winRes = await fetch('/api/battle', {
@@ -226,6 +230,7 @@ window.combatAction = async (type) => {
         
         logBattle(`🏆 <b>VICTORY!</b>`);
         alert(`You Won!\n+${winData.coins} Coins\n+${winData.xp} XP`);
+        
         closeBattle();
         syncUser();
         
@@ -276,7 +281,7 @@ async function loadShop() {
         <div style="font-size:2rem; margin-bottom:5px">${item.icon || '⚔️'}</div>
         <div class="item-name">${item.name}</div>
         <div class="item-price">💰 ${item.price}</div>
-        <div style="font-size:0.7rem; color:#aaa">+${item.power} Effect</div>
+        <div style="font-size:0.7rem; color:#aaa">+${item.power || item.hp || '?'} Power</div>
       </div>
     `).join('');
   } catch(e) {}
@@ -293,7 +298,7 @@ window.buyItem = async (slug) => {
   else alert(data.error);
 };
 
-// --- ADMIN ---
+// --- ADMIN: ADD ITEMS & MONSTERS ---
 window.adminAddItem = async () => {
     const nameEl = document.getElementById("admItemName");
     const slugEl = document.getElementById("admItemSlug");
@@ -307,7 +312,11 @@ window.adminAddItem = async () => {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
             requester_id: u.id, action: 'add_item',
-            data: { name: nameEl.value, slug: slugEl.value, price: Number(priceEl.value), power: Number(powerEl.value), type: typeEl.value, icon: '🎒' }
+            data: { 
+                name: nameEl.value, slug: slugEl.value, 
+                price: Number(priceEl.value), power: Number(powerEl.value), 
+                type: typeEl.value, icon: '🎒' 
+            }
         })
     });
     alert("Item Added!");
@@ -341,30 +350,30 @@ window.adminAddMonster = async () => {
     nameEl.value = ""; slugEl.value = ""; imgEl.value = ""; hpEl.value = ""; atkEl.value = "";
 };
 
+// --- ADMIN: MANAGE USER (HEAL/BUFF) ---
 window.adminBuffUser = async () => {
-    const targetId = document.getElementById("admTargetId").value;
-    const stat = document.getElementById("admBuffType").value;
-    const amount = document.getElementById("admBuffAmt").value;
+    const targetIdEl = document.getElementById("admTargetId");
+    const statEl = document.getElementById("admBuffType");
+    const amountEl = document.getElementById("admBuffAmt");
 
-    if(!targetId) return alert("Enter User ID");
+    if(!targetIdEl.value) return alert("Enter User ID");
 
     const res = await fetch('/api/shop', { 
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ 
             action: 'admin_buff', 
-            userId: u.id, // Auth
-            targetId: targetId, 
-            stat: stat, 
-            amount: Number(amount) || 0 
+            userId: u.id, // Authenticator
+            targetId: targetIdEl.value, 
+            stat: statEl.value, 
+            amount: Number(amountEl.value) || 0 
         })
     });
     const d = await res.json();
     if(d.success) alert(d.msg); else alert(d.error);
     
-    // Input Clean
-    document.getElementById("admTargetId").value = "";
-    document.getElementById("admBuffAmt").value = "";
+    // Clear Inputs
+    targetIdEl.value = ""; amountEl.value = "";
     
-    // Refresh self if needed
-    if(targetId == u.id) syncUser();
+    // Refresh if self
+    if(targetIdEl.value == u.id) syncUser();
 };
