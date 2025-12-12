@@ -1,175 +1,95 @@
 const connectDB = require('./lib/db');
 const { User } = require('./lib/models');
 
-// --- MONSTER DATA (Hardcoded for now) ---
+// ➤ MONSTER DATABASE (Aapki Photos ke naam)
 const MONSTERS = [
-  { slug: 'goblin', name: 'Sneaky Goblin', level: 1, hp: 30, max_hp: 30, attack: 5, xp: 10, gold: 5, img: 'https://cdn-icons-png.flaticon.com/512/3062/3062634.png' },
-  { slug: 'orc', name: 'Orc Warrior', level: 3, hp: 60, max_hp: 60, attack: 12, xp: 30, gold: 15, img: 'https://cdn-icons-png.flaticon.com/512/9373/9373408.png' },
-  { slug: 'dragon', name: 'Inferno Dragon', level: 10, hp: 200, max_hp: 200, attack: 30, xp: 150, gold: 100, img: 'https://cdn-icons-png.flaticon.com/512/10609/10609653.png' } // Aapki Dragon pic use kar sakte hain baad me
+  // Low Level (Small)
+  { slug: 'goblin', name: 'Sneaky Goblin', lvl: 1, hp: 30, atk: 5, gold: 10, img: 'https://cdn-icons-png.flaticon.com/512/3062/3062634.png' },
+  { slug: 'wolf', name: 'Dire Wolf', lvl: 3, hp: 50, atk: 8, gold: 20, img: 'https://cdn-icons-png.flaticon.com/512/616/616554.png' },
+  
+  // Bosses (Aapki List)
+  { slug: 'floraxa', name: 'Floraxa', lvl: 10, hp: 200, atk: 25, gold: 100, img: 'YOUR_FLORAXA_URL_HERE' },
+  { slug: 'drakor', name: 'Drakor', lvl: 15, hp: 350, atk: 40, gold: 200, img: 'YOUR_DRAKOR_URL_HERE' },
+  { slug: 'glacier', name: 'Glacier', lvl: 20, hp: 500, atk: 55, gold: 300, img: 'YOUR_GLACIER_URL_HERE' },
+  { slug: 'voltrix', name: 'Voltrix', lvl: 25, hp: 600, atk: 70, gold: 400, img: 'YOUR_VOLTRIX_URL_HERE' },
+  { slug: 'grudor', name: 'Grudor', lvl: 30, hp: 800, atk: 85, gold: 500, img: 'YOUR_GRUDOR_URL_HERE' },
+  { slug: 'zarnok', name: 'Zarnok', lvl: 35, hp: 1000, atk: 100, gold: 700, img: 'YOUR_ZARNOK_URL_HERE' },
+  { slug: 'venmora', name: 'Venmora', lvl: 40, hp: 1200, atk: 120, gold: 900, img: 'YOUR_VENMORA_URL_HERE' },
+  { slug: 'abyzoth', name: 'Abyzoth', lvl: 50, hp: 2000, atk: 150, gold: 1500, img: 'YOUR_ABYZOTH_URL_HERE' },
+  { slug: 'silicox', name: 'Silicox', lvl: 60, hp: 3000, atk: 200, gold: 2000, img: 'YOUR_SILICOX_URL_HERE' },
+  { slug: 'nimbrax', name: 'Nimbrax', lvl: 70, hp: 4000, atk: 250, gold: 3000, img: 'YOUR_NIMBRAX_URL_HERE' }
 ];
 
 module.exports = async (req, res) => {
   await connectDB();
-  const { action, id, userId, monsterId } = req.method === 'POST' ? req.body : req.query;
+  const { action, id, userId, monsterId } = req.body.action ? req.body : req.query;
 
-  // --- START BATTLE (GET) ---
+  // --- 1. START BATTLE (Find Monster) ---
   if (action === 'start') {
     const user = await User.findOne({ tg_id: id });
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    // Pick random monster based on User Level (Simple Logic)
-    let monster = MONSTERS[0];
-    if (user.level >= 3) monster = MONSTERS[1];
-    if (user.level >= 10) monster = MONSTERS[2];
+    // Logic: User ke level ke hisaab se monster do
+    // Level 1-5: Small Monsters
+    // Level 5+: Bosses chance increases
+    
+    let pool = MONSTERS.filter(m => m.lvl <= user.level + 2); // Thoda strong monster bhi aa sakta hai
+    if (pool.length === 0) pool = [MONSTERS[0]];
+    
+    const randomMonster = pool[Math.floor(Math.random() * pool.length)];
 
-    // Return fresh monster state
-    return res.json({
-      monster: { ...monster, image_url: monster.img }
-    });
+    return res.json({ monster: randomMonster });
   }
 
-  // --- FIGHT TURN (POST) ---
+  // --- 2. ATTACK LOGIC ---
   if (action === 'attack') {
     const user = await User.findOne({ tg_id: userId });
-    const monsterBase = MONSTERS.find(m => m.slug === monsterId) || MONSTERS[0];
-    
-    // NOTE: In a real DB game, we would save Battle State in DB. 
-    // Here, for simplicity, we simulate a turn assuming Client sends current state 
-    // OR we just calculate 1 turn. The Client keeps track of "Current HP" of monster visually.
-    // BUT for security, we should check kills. 
-    // Let's assume the Client asks "I attacked". We calculate damage.
-    
-    // 1. User Attacks
-    const dmgDealt = Math.floor(user.attack * (1 + Math.random() * 0.2)); // +20% random variance
-    
-    // 2. Monster Attacks
-    let dmgTaken = Math.max(0, monsterBase.attack - user.defense);
-    
-    // Update User HP in DB
+    const monster = MONSTERS.find(m => m.slug === monsterId) || MONSTERS[0];
+
+    // Damage Calc
+    const dmgDealt = Math.floor(user.attack * (1 + Math.random() * 0.2)); 
+    const dmgTaken = Math.max(1, monster.atk - (user.defense || 0));
+
+    // Update User HP (Permanent)
     user.hp -= dmgTaken;
     
-    // Check Result
-    let win = false;
-    let reward_gold = 0;
-    let reward_xp = 0;
-
-    // We rely on Client to tell us if Monster died? NO.
-    // Hacky Stateless Way: We return DMGs. Client tracks Monster HP. 
-    // If Client says "Monster HP < 0", we call a 'claim_win' endpoint.
-    // BUT to keep it simple one-file:
-    // We send back calculations. The frontend reduces HP bars. 
-    // If Monster dies in frontend logic (HP < 0), it triggers 'claim_win'.
-    
-    // Wait, let's make it simpler.
-    // We just return the damage values.
-    
+    // Death Check
     if (user.hp <= 0) {
-      user.hp = user.max_hp; // Reset on death (Mercy)
-      user.gold = Math.floor(user.gold / 2); // Penalty
+      user.hp = 0;
+      // Penalty logic can be added here
     }
     await user.save();
 
-    // Check if user killed it (Simulated logic: 
-    // Ideally we pass 'currentMonsterHp' from client to verify, but let's trust client for now to keep code short)
-    
+    // Send back data so frontend can animate
     return res.json({
       dmg_dealt: dmgDealt,
       dmg_taken: dmgTaken,
       user_hp: user.hp,
-      monster_hp: 0 // Client calculates this for now
+      monster_max_hp: monster.hp, // Frontend needs this to calculate %
+      reward_gold: monster.gold
     });
   }
   
-  // --- CLAIM REWARD (When Monster Dies) ---
-  // To prevent cheating, we should verify, but for now:
+  // --- 3. CLAIM WIN (Frontend calls this when monster dies) ---
   if (action === 'claim_win') {
-     // TODO: Add logic later
-  }
-
-  // REVISED LOGIC FOR SIMPLICITY:
-  // Since we don't have a 'Battle' model in DB yet, the frontend controls the flow.
-  // The Backend just validates User stats updates.
-  // Above 'attack' logic returns damage values.
-  
-  // Let's modify 'attack' above to handle rewards if we pass 'isKill: true'
-  
-  if (action === 'attack' && req.body.isKill) {
-     // Grant Rewards
-     const user = await User.findOne({ tg_id: userId });
-     const monster = MONSTERS.find(m => m.slug === monsterId);
-     if(user && monster) {
-         user.gold += monster.gold;
-         user.xp += monster.xp;
-         
-         // Level Up?
-         if (user.xp >= user.max_xp) {
-             user.level++;
-             user.max_xp = Math.floor(user.max_xp * 1.5);
-             user.max_hp += 20;
-             user.attack += 5;
-             user.hp = user.max_hp; // Full heal
-         }
-         await user.save();
-         return res.json({ win: true, reward_gold: monster.gold, reward_xp: monster.xp });
-     }
-  }
-  
-  // Correction: The frontend 'performAttack' expects return data to update HP bars.
-  // I will make the Backend stateless for Monster HP.
-  // The Frontend sends "Attack". Backend calculates damages based on Stats.
-  // Frontend reduces visual HP. If visual HP <= 0, Frontend alerts Victory.
-  // BUT to save Gold, we need a 'claim' endpoint.
-  // Let's stick to the simplest flow:
-  // Frontend handles the loop. Backend handles 'User Damage' (HP reduction).
-  
-  // FINAL SIMPLE BATTLE LOGIC FOR NOW:
-  if (action === 'attack') {
       const user = await User.findOne({ tg_id: userId });
       const monster = MONSTERS.find(m => m.slug === monsterId);
       
-      const dmgDealt = Math.floor(user.attack * 1.1);
-      const dmgTaken = Math.max(1, monster.attack - user.defense);
-      
-      user.hp -= dmgTaken;
-      if(user.hp <= 0) {
-          user.hp = 0; // Dead
-      }
-      
-      // Auto-Win Check (Hack: If user attack is high enough relative to monster max hp / 3 hits)
-      // Actually, let's return 'monster_hp' as 'current - damage'.
-      // This requires passing current monster hp from client.
-      // Let's grab it from body if available, else assume max.
-      let currentMonsterHp = req.body.currentMonsterHp || monster.hp;
-      currentMonsterHp -= dmgDealt;
-      
-      let win = false;
-      let r_gold = 0, r_xp = 0;
-      
-      if (currentMonsterHp <= 0) {
-          win = true;
+      if(user && monster) {
           user.gold += monster.gold;
-          user.xp += monster.xp;
-          if (user.xp >= user.max_xp) {
-             user.level++;
-             user.max_xp = Math.floor(user.max_xp * 1.5);
-             user.max_hp += 20;
-             user.attack += 5;
-             user.hp = user.max_hp; 
+          user.xp += monster.gold * 2; // Simple XP logic
+          
+          // Level Up Logic
+          if (user.xp >= user.level * 100) {
+              user.level += 1;
+              user.max_hp += 20;
+              user.attack += 5;
+              user.hp = user.max_hp; // Full Heal on Level Up
           }
+          await user.save();
+          return res.json({ success: true, gold: user.gold, level: user.level });
       }
-      
-      await user.save();
-      
-      return res.json({
-          dmg_dealt: dmgDealt,
-          dmg_taken: dmgTaken,
-          user_hp: user.hp,
-          monster_hp: currentMonsterHp,
-          win: win,
-          reward_gold: monster.gold,
-          reward_xp: monster.xp
-      });
   }
 
-  res.json({ error: "Invalid" });
+  res.json({ error: "Invalid Action" });
 };
