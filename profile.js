@@ -2,37 +2,18 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// --- CONFIG ---
-const root = document.documentElement;
-let currentTheme = localStorage.getItem("theme") || "dark";
-let customBg = localStorage.getItem("customBg");
-let isGradient = localStorage.getItem("isGradient") === "true";
-
-if (customBg) { applyCustomBg(customBg, isGradient); } 
-else { applyTheme(currentTheme); }
-
-// --- USER DATA ---
+// --- STATE ---
 const u = tg.initDataUnsafe?.user;
-const OWNER_ID = 1302298741; 
-
-// --- GIPHY CONFIG ---
-const GIPHY_API_KEY = "UAkjwtiLtcGswaMkOHfmT333vuWxJAsZ"; // Aapki ID
-
-let currentChatId = null;
-let chatPoll = null;
-let discoverPage = 1;
-let currentUserData = null;
+let userData = null;
+let currentBattle = null; // Stores monster & battle state
 
 // --- INITIALIZATION ---
 window.onload = () => {
   const gate = document.getElementById("loginGate");
   const app = document.getElementById("app");
-  const nav = document.getElementById("bottomNav");
-  const loader = document.getElementById("loadingScreen");
-
-  // 1. GATEWAY CHECK
+  
   if (!u || !u.id) {
-    if(loader) loader.style.display = "none";
+    document.getElementById("loadingScreen").style.display = "none";
     if(gate) gate.classList.remove("hidden");
     if(app) app.classList.add("hidden");
     return;
@@ -40,644 +21,220 @@ window.onload = () => {
 
   if(gate) gate.classList.add("hidden");
   if(app) app.classList.remove("hidden");
-  if(nav) nav.classList.remove("hidden");
+  document.getElementById("bottomNav").classList.remove("hidden");
 
-  // 2. THEME INIT
-  const bgPicker = document.getElementById("bgPicker");
-  const gradCheck = document.getElementById("gradientToggle");
-  const colorPreview = document.getElementById("colorPreviewBox");
-  
-  if(bgPicker && customBg) {
-    bgPicker.value = customBg;
-    if(colorPreview) colorPreview.style.backgroundColor = customBg;
-  }
-  if(gradCheck) gradCheck.checked = isGradient;
-
-  if(bgPicker) {
-    bgPicker.addEventListener("input", (e) => {
-      const color = e.target.value;
-      const isGrad = document.getElementById("gradientToggle").checked;
-      if(colorPreview) colorPreview.style.backgroundColor = color;
-      applyCustomBg(color, isGrad);
-      localStorage.setItem("customBg", color);
-    });
-  }
-  if(gradCheck) {
-    gradCheck.addEventListener("change", (e) => {
-      const color = document.getElementById("bgPicker").value;
-      applyCustomBg(color, e.target.checked);
-      localStorage.setItem("isGradient", e.target.checked);
-    });
-  }
-
-  // 3. SYNC
-  syncUserAndCheckPermissions();
-
-  // 4. UI FILL
-  if(document.getElementById("userName")) {
-      document.getElementById("userName").textContent = u.first_name;
-      document.getElementById("userHandle").textContent = u.username ? "@"+u.username : "—";
-      document.getElementById("userId").textContent = u.id;
-      if(u.photo_url) document.getElementById("userAvatar").src = u.photo_url;
-  }
-
-  setTimeout(() => { if(loader) loader.style.display = "none"; }, 500);
-  loadRecentChats();
-  
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.msg')) removeContextMenu();
-    // Close sticker picker if clicked outside
-    if (!e.target.closest('.sticker-picker') && !e.target.closest('.icon-btn')) {
-        document.getElementById("stickerPicker").classList.add("hidden");
-    }
-  });
+  syncUser();
+  setTimeout(() => document.getElementById("loadingScreen").style.display = "none", 500);
 };
 
-async function syncUserAndCheckPermissions() {
+// --- SYNC USER & UPDATE UI ---
+async function syncUser() {
   try {
+    // Sync User
     const res = await fetch('/api/syncUser', { 
-      method: 'POST', 
-      headers: {'Content-Type': 'application/json'}, 
-      body: JSON.stringify(u) 
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(u) 
     });
-    currentUserData = await res.json();
-
-    if (currentUserData.tg_id === OWNER_ID || currentUserData.is_admin) {
-      injectAdminButton();
-    }
-    
-    if (currentUserData.is_banned) {
-      alert("You are BANNED.");
-      Telegram.WebApp.close();
-    }
-
-    if (currentUserData.is_verified) {
-       document.getElementById("userName").innerHTML += ` <span class="material-icons-round verified-badge" style="vertical-align:middle; font-size:1.2rem;">verified</span>`;
-    }
-  } catch(e) { console.error(e); }
+    userData = await res.json();
+    updateProfileUI();
+    loadShop(); // Pre-load shop
+  } catch(e) { console.error("Sync Failed", e); }
 }
 
-// --- GIPHY STICKER LOGIC ---
-window.toggleStickerPicker = () => {
-  const picker = document.getElementById("stickerPicker");
-  picker.classList.toggle("hidden");
+function updateProfileUI() {
+  if(!userData) return;
   
-  // Load trending if empty
-  if (!picker.classList.contains("hidden") && picker.innerHTML.trim() === "") {
-     loadGiphyStickers(); // Load Trending
-  }
-};
+  // Header
+  document.getElementById("userGold").innerText = userData.gold;
+  document.getElementById("heroName").innerText = userData.first_name;
+  document.getElementById("heroLevel").innerText = userData.level;
+  document.getElementById("profileAvatar").src = userData.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
 
-async function loadGiphyStickers(query = "") {
-  const picker = document.getElementById("stickerPicker");
-  picker.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:0.5;padding:20px">Loading Giphy...</div>`;
+  // Stats Tab
+  document.getElementById("heroHp").innerText = `${userData.hp}/${userData.max_hp}`;
+  document.getElementById("heroEnergy").innerText = `${userData.energy || 20}/20`;
+  document.getElementById("heroAttack").innerText = userData.attack;
   
-  try {
-    let url = "";
-    if(query) {
-        url = `https://api.giphy.com/v1/stickers/search?api_key=${GIPHY_API_KEY}&q=${query}&limit=20&rating=g`;
-    } else {
-        url = `https://api.giphy.com/v1/stickers/trending?api_key=${GIPHY_API_KEY}&limit=20&rating=g`;
-    }
+  // XP Bar
+  const xpPercent = (userData.xp / userData.max_xp) * 100;
+  document.getElementById("heroXpBar").style.width = `${xpPercent}%`;
+  document.getElementById("xpText").innerText = `${userData.xp}/${userData.max_xp}`;
 
-    const res = await fetch(url);
-    const data = await res.json();
-    
-    // Add Search Input inside Picker (Only once)
-    let searchHTML = `
-      <div style="grid-column:1/-1; padding-bottom:10px; position:sticky; top:0; z-index:20;">
-        <input type="text" placeholder="Search Giphy..." 
-               style="width:100%; padding:8px; border-radius:12px; border:none; background:rgba(0,0,0,0.2); color:var(--text); outline:none;"
-               onkeypress="if(event.key === 'Enter') loadGiphyStickers(this.value)">
-      </div>
-    `;
-
-    if (data.data.length === 0) {
-        picker.innerHTML = searchHTML + `<div style="grid-column:1/-1;text-align:center;opacity:0.5">No stickers found</div>`;
-        return;
-    }
-
-    const stickersHTML = data.data.map(gif => `
-      <img src="${gif.images.fixed_height.url}" 
-           class="sticker-item" 
-           onclick="sendSticker('${gif.images.fixed_height.url}')"
-           loading="lazy">
-    `).join('');
-
-    picker.innerHTML = searchHTML + stickersHTML;
-
-  } catch(e) {
-    console.error(e);
-    picker.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:red">Failed to load Giphy</div>`;
-  }
-}
-
-// Make loadGiphyStickers global for the search input
-window.loadGiphyStickers = loadGiphyStickers;
-
-window.sendSticker = async (url) => {
-  document.getElementById("stickerPicker").classList.add("hidden");
-  
-  if(!currentChatId) return;
-
-  const box = document.getElementById("messageArea");
-  const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  
-  // Optimistic UI
-  box.innerHTML += `
-    <div class="msg out sticker">
-      <img src="${url}">
-      <span class="msg-time" style="color:rgba(255,255,255,0.7); text-shadow:0 1px 2px black;">${t}</span>
-    </div>`;
-  box.scrollTop = box.scrollHeight;
-
-  await fetch('/api/chat', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({
-      sender_id: u.id, 
-      receiver_id: currentChatId, 
-      type: 'sticker', 
-      media: url
-    })
-  });
-  
-  loadMsgs();
-};
-
-// --- DISCOVER LOGIC ---
-window.loadDiscoverUsers = async (reset = false) => {
-  const grid = document.getElementById("discoverGrid");
-  const btnContainer = document.getElementById("loadMoreContainer");
-  
-  if(reset) {
-    discoverPage = 1;
-    grid.innerHTML = "";
-    btnContainer.classList.add("hidden");
-  }
-
-  try {
-    const res = await fetch(`/api/search?query=&page=${discoverPage}&myId=${u.id}`);
-    const users = await res.json();
-
-    if (!users || users.length === 0) {
-      if(discoverPage === 1) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:0.5;padding:20px">No users found</div>`;
-      btnContainer.classList.add("hidden");
-      return;
-    }
-
-    const html = users.map(user => `
-      <div class="grid-user-card" onclick="openChat(this)"
-           data-id="${user.tg_id}" 
-           data-name="${user.first_name}" 
-           data-photo="${user.photo_url || ''}"
-           data-verified="${user.is_verified}">
-        <img src="${user.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" loading="lazy">
-        <div class="grid-name">
-          ${user.first_name} 
-          ${user.is_verified ? '<span class="material-icons-round verified-badge" style="font-size:0.8rem">verified</span>' : ''}
-        </div>
+  // Inventory
+  const invGrid = document.getElementById("inventoryList");
+  if(userData.inventory && userData.inventory.length > 0) {
+    invGrid.innerHTML = userData.inventory.map(item => `
+      <div class="item-card">
+        <div style="font-size:2rem">⚔️</div>
+        <div class="item-name">${item.name}</div>
+        <small style="color:var(--text-sec)">Power: ${item.power}</small>
       </div>
     `).join('');
-
-    grid.insertAdjacentHTML('beforeend', html);
-
-    if (users.length === 10) {
-      btnContainer.classList.remove("hidden");
-    } else {
-      btnContainer.classList.add("hidden");
-    }
-
-  } catch(e) { console.error("Discover Error", e); }
-};
-
-window.loadMoreUsers = () => {
-  discoverPage++;
-  loadDiscoverUsers(false);
-};
-
-// --- ADMIN LOGIC ---
-function injectAdminButton() {
-  const menuList = document.querySelector("#tab-settings .menu-list");
-  if(!menuList || document.getElementById("adminPortalBtn")) return;
-
-  const adminBtn = document.createElement("div");
-  adminBtn.id = "adminPortalBtn";
-  adminBtn.className = "menu-row";
-  adminBtn.style.border = "1px solid #3b82f6"; 
-  adminBtn.style.background = "rgba(59, 130, 246, 0.1)";
-  adminBtn.innerHTML = `
-    <div class="row-left" style="color:#3b82f6; font-weight:bold;">
-      <span class="material-icons-round">admin_panel_settings</span> Open Admin Portal
-    </div>
-  `;
-  adminBtn.onclick = () => {
-    loadAdminData(); 
-    switchTab('tab-admin', null); 
-  };
-  menuList.insertBefore(adminBtn, menuList.firstChild);
-}
-
-async function loadAdminData() {
-  const list = document.getElementById("adminUserList");
-  list.innerHTML = `<div style="text-align:center;padding:20px;opacity:0.6">Fetching Database...</div>`;
-
-  try {
-    const res = await fetch('/api/admin', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ requester_id: u.id, action: 'list' })
-    });
-    const users = await res.json();
-
-    if(users.error) {
-       list.innerHTML = `<div style="color:red;text-align:center">${users.error}</div>`;
-       return;
-    }
-
-    if(document.getElementById("totalUsers")) document.getElementById("totalUsers").textContent = users.length;
-    const isMeOwner = (u.id === OWNER_ID);
-
-    list.innerHTML = users.map(user => {
-      const isTargetOwner = (user.tg_id === OWNER_ID);
-      let adminBtn = '';
-      if (isMeOwner && !isTargetOwner) {
-        adminBtn = `<button onclick="adminAction('toggle_admin', ${user.tg_id})" style="padding:6px;border-radius:6px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-size:0.8rem;margin-left:auto">
-          ${user.is_admin ? 'Demote' : 'Make Admin'}
-        </button>`;
-      }
-
-      return `
-      <div class="menu-row" style="flex-direction:column; align-items:flex-start; gap:10px;">
-        <div style="display:flex; width:100%; align-items:center;">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <img src="${user.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" style="width:40px;height:40px;border-radius:50%">
-            <div>
-              <div style="font-weight:bold; font-size:0.95rem;">
-                ${user.first_name} 
-                ${user.is_verified ? '<span class="material-icons-round verified-badge" style="font-size:1rem">verified</span>' : ''}
-                ${user.is_admin ? '<span style="background:gold;color:black;font-size:0.6rem;padding:2px 4px;border-radius:4px;vertical-align:middle;font-weight:bold">ADMIN</span>' : ''}
-                ${user.is_banned ? '<span style="background:red;color:white;font-size:0.6rem;padding:2px 4px;border-radius:4px;vertical-align:middle;font-weight:bold">BANNED</span>' : ''}
-              </div>
-              <div style="font-size:0.7rem; opacity:0.6;">ID: ${user.tg_id}</div>
-            </div>
-          </div>
-          ${adminBtn}
-        </div>
-        <div style="display:flex; gap:8px; width:100%;">
-          <button onclick="adminAction('toggle_verify', ${user.tg_id})" style="flex:1; padding:8px; border-radius:8px; border:none; background:${user.is_verified ? 'var(--card-bg)' : '#3b82f6'}; color:${user.is_verified ? 'var(--text)' : 'white'}; border:1px solid var(--border)">
-            ${user.is_verified ? 'Unverify' : 'Verify'}
-          </button>
-          <button onclick="adminAction('toggle_ban', ${user.tg_id})" style="flex:1; padding:8px; border-radius:8px; border:none; background:${user.is_banned ? '#4ade80' : '#ef4444'}; color:white;">
-            ${user.is_banned ? 'Unban' : 'Ban'}
-          </button>
-          <button onclick="adminAction('delete_user', ${user.tg_id})" style="padding:8px 12px; border-radius:8px; border:1px solid #ef4444; background:transparent; color:#ef4444;">
-            <span class="material-icons-round" style="font-size:1.1rem; vertical-align:middle">delete</span>
-          </button>
-        </div>
-      </div>
-    `}).join('');
-  } catch(e) { list.innerHTML = "API Error"; }
-}
-
-window.adminAction = async (action, targetId) => {
-  if (action === 'delete_user' && !confirm("Permanently Delete User?")) return;
-  try {
-    const res = await fetch('/api/admin', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ requester_id: u.id, target_id: targetId, action: action })
-    });
-    const data = await res.json();
-    if(data.error) alert(data.error);
-    else loadAdminData(); 
-  } catch(e) { alert("Action Failed"); }
-};
-
-window.filterAdminList = () => {
-  const query = document.getElementById("adminSearch").value.toLowerCase();
-  const rows = document.querySelectorAll("#adminUserList .menu-row");
-  rows.forEach(row => {
-    row.style.display = row.innerText.toLowerCase().includes(query) ? "flex" : "none";
-  });
-};
-
-// --- THEME ---
-window.resetThemeToDefault = () => {
-  localStorage.removeItem("customBg");
-  localStorage.removeItem("isGradient");
-  root.style.background = "";
-  applyTheme(currentTheme);
-  document.getElementById("bgPicker").value = "#0f0f0f";
-  document.getElementById("gradientToggle").checked = false;
-  alert("Theme Reset!");
-};
-
-window.toggleTheme = () => {
-  if(localStorage.getItem("customBg")) {
-    if(!confirm("Changing Theme will reset your Custom Background. Continue?")) return;
-    resetThemeToDefault();
-    return;
-  }
-  currentTheme = currentTheme === "dark" ? "light" : "dark";
-  localStorage.setItem("theme", currentTheme);
-  applyTheme(currentTheme);
-};
-
-function applyTheme(t) {
-  const btn = document.querySelector("#themeToggle span");
-  if(t === 'light') {
-    root.classList.add('light-theme');
-    tg.setHeaderColor('#f3f4f6'); tg.setBackgroundColor('#f3f4f6');
-    if(btn) btn.textContent = "light_mode";
   } else {
-    root.classList.remove('light-theme');
-    tg.setHeaderColor('#0f0f0f'); tg.setBackgroundColor('#0f0f0f');
-    if(btn) btn.textContent = "dark_mode";
+    invGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:0.5">Empty Bag</div>`;
   }
 }
 
-function applyCustomBg(color, gradient) {
-  if (gradient) root.style.background = `linear-gradient(135deg, ${color} 0%, #000000 100%)`;
-  else root.style.background = color;
-  root.style.setProperty('--bg', color);
+// --- BATTLE SYSTEM ---
+
+// 1. Start Fight
+window.startAdventure = async () => {
+  if(userData.hp <= 0) { alert("You are dead! Heal first."); return; }
+  
+  document.getElementById("arenaLobby").classList.add("hidden");
+  document.getElementById("battleScreen").classList.remove("hidden");
+  logBattle("🔍 Searching for monster...");
+
+  try {
+    const res = await fetch(`/api/battle?action=start&id=${u.id}`);
+    const data = await res.json();
+    
+    currentBattle = data;
+    updateBattleUI();
+    logBattle(`⚔️ A wild **${data.monster.name}** appeared!`);
+  } catch(e) { logBattle("Error finding monster."); }
+};
+
+// 2. Attack
+window.performAttack = async () => {
+  if(!currentBattle || currentBattle.monster.hp <= 0) return;
+
+  // Animation
+  const monsterImg = document.getElementById("monsterImage");
+  monsterImg.style.transform = "scale(0.9) rotate(-5deg)"; // Hit effect
+  setTimeout(() => monsterImg.style.transform = "", 200);
+
+  try {
+    const res = await fetch('/api/battle', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ action: 'attack', userId: u.id, monsterId: currentBattle.monster.slug })
+    });
+    const result = await res.json();
+    
+    // Update Local State
+    currentBattle.monster.hp = result.monster_hp;
+    userData.hp = result.user_hp;
+    
+    // Show Damage Numbers
+    showDamage(result.dmg_dealt);
+
+    // Logs
+    logBattle(`You hit for <b>${result.dmg_dealt}</b> dmg!`);
+    if(result.dmg_taken > 0) logBattle(`Monster hit you for <b>${result.dmg_taken}</b> dmg!`);
+
+    // Check Win/Loss
+    if(result.win) {
+      logBattle(`🏆 <span style="color:gold">Victory! Found ${result.reward_gold} Gold & ${result.reward_xp} XP.</span>`);
+      setTimeout(() => {
+        alert(`Victory! +${result.reward_gold} Gold`);
+        closeBattle();
+        syncUser(); // Refresh stats
+      }, 1500);
+    } else if(result.user_hp <= 0) {
+      logBattle(`💀 You were defeated...`);
+      setTimeout(() => {
+        alert("You died! HP restored to 50%");
+        closeBattle();
+        syncUser();
+      }, 1500);
+    }
+
+    updateBattleUI();
+    updateProfileUI(); // Update HP bar in profile
+
+  } catch(e) { console.error(e); }
+};
+
+// 3. Heal
+window.usePotion = async () => {
+  if(userData.gold < 10) { logBattle("Not enough gold (10g) to heal!"); return; }
+  
+  await fetch('/api/shop', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ action: 'heal', userId: u.id })
+  });
+  logBattle("💚 You drank a potion. HP Restored!");
+  syncUser();
+};
+
+// 4. Flee
+window.fleeBattle = () => {
+  logBattle("🏃 You ran away!");
+  setTimeout(closeBattle, 1000);
+};
+
+// Helper: Update UI
+function updateBattleUI() {
+  if(!currentBattle) return;
+  const m = currentBattle.monster;
+  
+  document.getElementById("monsterName").innerText = m.name;
+  document.getElementById("monsterLvl").innerText = m.level;
+  document.getElementById("monsterImage").src = m.image_url;
+  
+  const hpPercent = (m.hp / m.max_hp) * 100;
+  document.getElementById("monsterHpBar").style.width = `${hpPercent}%`;
 }
 
-// --- NAV ---
+function closeBattle() {
+  document.getElementById("battleScreen").classList.add("hidden");
+  document.getElementById("arenaLobby").classList.remove("hidden");
+  document.getElementById("battleLog").innerHTML = ""; // Clear logs
+  currentBattle = null;
+}
+
+function logBattle(msg) {
+  const log = document.getElementById("battleLog");
+  log.innerHTML += `<div class="log-entry">${msg}</div>`;
+  log.scrollTop = log.scrollHeight;
+}
+
+function showDamage(amount) {
+  const overlay = document.getElementById("damageOverlay");
+  const el = document.createElement("div");
+  el.className = "damage-text";
+  el.innerText = `-${amount}`;
+  overlay.appendChild(el);
+  setTimeout(() => el.remove(), 800);
+}
+
+// --- SHOP LOGIC ---
+async function loadShop() {
+  const grid = document.getElementById("shopList");
+  try {
+    const res = await fetch('/api/shop?type=list');
+    const items = await res.json();
+    
+    grid.innerHTML = items.map(item => `
+      <div class="item-card" onclick="buyItem('${item.slug}')">
+        <div style="font-size:2.5rem">${item.icon || '⚔️'}</div>
+        <div class="item-name">${item.name}</div>
+        <div class="item-price">💰 ${item.price}</div>
+        <div style="font-size:0.7rem;color:#aaa">+${item.power} ${item.stat}</div>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
+
+window.buyItem = async (slug) => {
+  if(!confirm("Buy this item?")) return;
+  
+  const res = await fetch('/api/shop', {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ action: 'buy', userId: u.id, itemSlug: slug })
+  });
+  const result = await res.json();
+  
+  if(result.error) alert(result.error);
+  else {
+    alert("Item Purchased & Equipped!");
+    syncUser();
+  }
+};
+
+// --- NAVIGATION ---
 window.switchTab = (tabId, navEl) => {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById(tabId).classList.add('active-page');
-  
-  if(navEl) navEl.classList.add('active');
-  else {
-      const map = {'tab-profile':0, 'tab-chat':1, 'tab-discover':2, 'tab-notif':3, 'tab-settings':4};
-      if(map[tabId] !== undefined) document.querySelectorAll('.nav-item')[map[tabId]].classList.add('active');
-  }
-
-  if(tabId === 'tab-chat') {
-    document.getElementById("userSearch").value = "";
-    document.getElementById("suggestionList").innerHTML = "";
-    loadRecentChats();
-  }
-  if(tabId === 'tab-discover') {
-    loadDiscoverUsers(true);
-  }
-};
-
-// --- CHAT SEARCH ---
-const sInput = document.getElementById("userSearch");
-let sTimer;
-if(sInput) {
-  sInput.addEventListener("input", (e) => {
-    const val = e.target.value.trim();
-    const rec = document.getElementById("recentChatsList");
-    const sug = document.getElementById("suggestionList");
-    if(!val) {
-      sug.innerHTML = "";
-      if(rec) rec.classList.remove("hidden");
-      return;
-    }
-    if(rec) rec.classList.add("hidden");
-    clearTimeout(sTimer);
-    sTimer = setTimeout(() => doSearch(val), 300);
-  });
-}
-
-async function doSearch(query) {
-  const sug = document.getElementById("suggestionList");
-  sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.6">Searching...</div>`;
-  try {
-    const res = await fetch(`/api/search?query=${query}&myId=${u.id}`);
-    const users = await res.json();
-    const data = users.filter(user => Number(user.tg_id) !== Number(u.id));
-    if(data.length === 0) {
-      sug.innerHTML = `<div style="padding:20px;text-align:center;opacity:0.5">No users found</div>`;
-      return;
-    }
-    sug.innerHTML = data.map(usr => renderUserItem(usr)).join('');
-  } catch(e) { sug.innerHTML = "Error"; }
-}
-
-async function loadRecentChats() {
-  const list = document.getElementById("recentChatsList");
-  const empty = document.getElementById("emptyChatState");
-  if(!list) return;
-  try {
-    const res = await fetch(`/api/chat?type=list&myId=${u.id}`);
-    const users = await res.json();
-    if(document.getElementById("friendsCount")) document.getElementById("friendsCount").textContent = users.length;
-    list.innerHTML = "";
-    if(!users.length) {
-      if(empty) empty.classList.remove("hidden");
-      return;
-    }
-    if(empty) empty.classList.add("hidden");
-    list.classList.remove("hidden");
-    list.innerHTML = users.map(usr => renderUserItem(usr, true)).join('');
-  } catch(e){}
-}
-
-function renderUserItem(usr, showBadge = false) {
-  const badgeHtml = (showBadge && usr.unread_count > 0) 
-    ? `<div class="unread-badge">${usr.unread_count}</div>` 
-    : `<span class="material-icons-round" style="color:var(--accent)">chevron_right</span>`;
-  
-  const adminBadge = usr.is_verified ? `<span class="material-icons-round verified-badge">verified</span>` : ``;
-  const ownerTag = (usr.tg_id === OWNER_ID || usr.is_owner) ? `<span style="background:gold;color:black;font-size:0.6rem;padding:1px 4px;border-radius:4px;margin-left:5px;vertical-align:middle;font-weight:bold">OWNER</span>` : ``;
-
-  return `
-    <div class="user-item" 
-         onclick="openChat(this)" 
-         data-id="${usr.tg_id}" 
-         data-name="${usr.first_name}" 
-         data-photo="${usr.photo_url || ''}"
-         data-verified="${usr.is_verified || false}">
-      <img src="${usr.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}">
-      <div style="flex:1">
-         <div style="font-weight:600">${usr.first_name} ${adminBadge} ${ownerTag}</div>
-         <div style="font-size:0.8rem; opacity:0.6">
-           ${showBadge && usr.unread_count > 0 ? 'New messages' : '@'+(usr.username||'user')}
-         </div>
-      </div>
-      ${badgeHtml}
-    </div>
-  `;
-}
-
-// --- CHAT WINDOW ---
-window.openChat = async (el) => {
-  const id = el.getAttribute("data-id");
-  const name = el.getAttribute("data-name");
-  const photo = el.getAttribute("data-photo");
-  const isVerified = el.getAttribute("data-verified") === 'true';
-  const isOwner = Number(id) === OWNER_ID;
-  
-  if(!id) return;
-  currentChatId = Number(id);
-  
-  let badges = "";
-  if(isVerified) badges += `<span class="material-icons-round verified-badge" style="font-size:1.1rem;margin-left:5px">verified</span>`;
-  if(isOwner) badges += `<span style="background:gold;color:black;font-size:0.6rem;padding:1px 4px;border-radius:4px;margin-left:5px;vertical-align:middle;font-weight:bold">OWNER</span>`;
-
-  document.getElementById("chatPartnerName").innerHTML = name + badges;
-  document.getElementById("chatPartnerImg").src = photo || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
-  document.querySelector(".status").textContent = "Connecting...";
-
-  fetch('/api/chat', {
-    method: 'PUT',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({ myId: u.id, partnerId: currentChatId })
-  });
-
-  const overlay = document.getElementById("chatRoom");
-  overlay.classList.add("open");
-  tg.BackButton.show();
-  tg.BackButton.onClick(closeChat);
-
-  loadMsgs();
-  if(chatPoll) clearInterval(chatPoll);
-  chatPoll = setInterval(loadMsgs, 3000);
-};
-
-window.closeChat = () => {
-  document.getElementById("chatRoom").classList.remove("open");
-  tg.BackButton.hide();
-  tg.BackButton.offClick(closeChat);
-  clearInterval(chatPoll);
-  currentChatId = null;
-  loadRecentChats();
-};
-
-async function loadMsgs() {
-  if(!currentChatId) return;
-  try {
-    const res = await fetch(`/api/chat?u1=${u.id}&u2=${currentChatId}`);
-    const data = await res.json();
-    const msgs = data.messages || [];
-    const partner = data.partner || {};
-
-    const statusEl = document.querySelector(".status");
-    if (partner.last_seen) {
-      const last = new Date(partner.last_seen).getTime();
-      const now = new Date().getTime();
-      if ((now - last) / 1000 < 120) {
-        statusEl.textContent = "🟢 Online";
-        statusEl.style.color = "#4ade80";
-      } else {
-        statusEl.textContent = `Last seen: ${new Date(partner.last_seen).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
-        statusEl.style.color = "var(--text-sec)";
-      }
-    }
-
-    const box = document.getElementById("messageArea");
-    if(document.querySelector('.context-menu')) return; 
-
-    const isBottom = box.scrollHeight - box.scrollTop <= box.clientHeight + 150;
-    
-    box.innerHTML = msgs.map(m => {
-      const t = new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-      const isMe = m.sender_id == u.id;
-      const checks = isMe ? (m.is_read ? '✓✓' : '✓') : '';
-      
-      // Sticker or Text Logic
-      let content = '';
-      let msgClass = isMe ? 'out' : 'in';
-      
-      if (m.type === 'sticker') {
-        msgClass += ' sticker';
-        content = `<img src="${m.media}">`;
-      } else {
-        content = m.text;
-      }
-
-      return `
-        <div class="msg ${msgClass}" 
-             data-msg-id="${m._id}" 
-             oncontextmenu="showContextMenu(event, this, ${isMe})">
-          ${content}
-          <span class="msg-time" style="${m.type==='sticker'?'color:rgba(255,255,255,0.7);text-shadow:0 1px 2px black':''}">${t} <span style="margin-left:3px">${checks}</span></span>
-        </div>`;
-    }).join('');
-
-    if(isBottom || msgs.length < 5) box.scrollTop = box.scrollHeight;
-  } catch(e){}
-}
-
-window.showContextMenu = (e, el, isMe) => {
-  e.preventDefault();
-  removeContextMenu(); 
-  const menu = document.createElement("div");
-  menu.className = "context-menu";
-  const msgId = el.getAttribute("data-msg-id");
-  
-  // Basic Text copy if it's text
-  const text = el.innerText.split("\n")[0]; 
-
-  menu.innerHTML = `
-    <div class="ctx-item" onclick="navigator.clipboard.writeText('${text}');removeContextMenu()">
-      <span class="material-icons-round">content_copy</span> Copy
-    </div>
-    ${isMe || u.id === OWNER_ID ? `
-    <div class="ctx-item delete" onclick="deleteMessage('${msgId}')">
-      <span class="material-icons-round">delete</span> Delete
-    </div>` : ''}
-  `;
-
-  const rect = el.getBoundingClientRect();
-  menu.style.top = `${rect.top + window.scrollY + 10}px`;
-  if(isMe) menu.style.right = "20px"; else menu.style.left = "20px";
-  document.body.appendChild(menu);
-  if(window.navigator.vibrate) window.navigator.vibrate(50);
-};
-
-window.removeContextMenu = () => {
-  const menus = document.querySelectorAll(".context-menu");
-  menus.forEach(m => m.remove());
-};
-
-window.deleteMessage = async (msgId) => {
-  removeContextMenu();
-  if(!confirm("Delete this message?")) return;
-  const el = document.querySelector(`[data-msg-id="${msgId}"]`);
-  if(el) el.style.display = "none"; 
-  try {
-    await fetch('/api/chat', {
-      method: 'DELETE',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ message_id: msgId, user_id: u.id })
-    });
-  } catch(e) { alert("Failed to delete"); }
-};
-
-window.sendMsg = async () => {
-  const inp = document.getElementById("msgInput");
-  const txt = inp.value.trim();
-  
-  if(!txt || !currentChatId) {
-      console.log("Send cancelled: Empty text or no active chat");
-      return;
-  }
-
-  // Clear Input
-  inp.value = "";
-  
-  // Optimistic UI
-  const box = document.getElementById("messageArea");
-  const t = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  box.innerHTML += `<div class="msg out" style="opacity:0.7">${txt}<span class="msg-time">${t}</span></div>`;
-  box.scrollTop = box.scrollHeight;
-
-  const res = await fetch('/api/chat', {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({sender_id: u.id, receiver_id: currentChatId, text: txt})
-  });
-  
-  if(!res.ok) {
-      const err = await res.json();
-      if(err.error) alert(err.error);
-  }
-  
-  loadMsgs();
+  navEl.classList.add('active');
 };
