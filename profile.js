@@ -40,7 +40,7 @@ async function syncUser() {
     });
     userData = await res.json();
     
-    // Check Admin Permission for Nav Button
+    // Check Admin Permission
     if (userData.tg_id === OWNER_ID || userData.is_admin) {
         document.getElementById("navAdminBtn").style.display = "flex";
     }
@@ -58,10 +58,9 @@ function updateProfileUI() {
   document.getElementById("userGold").innerText = userData.coins || 0;
   document.getElementById("heroName").innerText = userData.first_name;
   
-  // Character Info (Fixes Undefined)
+  // Character
   const charName = userData.character_name || "Novice";
-  document.getElementById("heroCharName").innerText = `${charName} (Lvl ${userData.level || 1})`;
-  
+  document.getElementById("heroCharName").innerText = `${charName}`;
   const charImg = userData.character_image || userData.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   document.getElementById("profileAvatar").src = charImg;
 
@@ -70,13 +69,11 @@ function updateProfileUI() {
   const currentHp = userData.hp !== undefined ? userData.hp : maxHp;
   document.getElementById("heroHp").innerText = `${currentHp}/${maxHp}`;
   document.getElementById("heroEnergy").innerText = `${userData.energy || 20}/20`;
-  
-  // Damage
   const minDmg = userData.damage_min || 5;
   const maxDmg = userData.damage_max || 10;
   document.getElementById("heroAttack").innerText = `${minDmg}-${maxDmg}`;
   
-  // XP Bar
+  // XP
   const xp = userData.xp || 0;
   const maxXp = userData.max_xp || userData.exp_max || 100;
   const xpPercent = Math.min(100, (xp / maxXp) * 100);
@@ -107,11 +104,50 @@ window.switchTab = (tabId, navEl) => {
   if (navEl) navEl.classList.add('active');
   
   if(tabId === 'tab-shop') loadShop();
+  if(tabId === 'tab-leaderboard') loadLeaderboard();
 };
 
-// --- BATTLE SYSTEM ---
+// --- LEADERBOARD LOGIC ---
+async function loadLeaderboard() {
+  const list = document.getElementById("leaderboardList");
+  list.innerHTML = `<div style="text-align:center;padding:20px;opacity:0.6">Loading...</div>`;
+  
+  try {
+    const res = await fetch(`/api/search?query=&page=1&myId=${u.id}`); // Reusing search API which sorts by level
+    const users = await res.json();
+    
+    if(!users || users.length === 0) {
+        list.innerHTML = `<div style="text-align:center;padding:20px;opacity:0.6">No Data</div>`;
+        return;
+    }
 
-// 1. Start
+    list.innerHTML = users.map((user, index) => {
+      const rank = index + 1;
+      let rankColor = "#aaa";
+      if(rank === 1) rankColor = "#ffd700"; // Gold
+      if(rank === 2) rankColor = "#c0c0c0"; // Silver
+      if(rank === 3) rankColor = "#cd7f32"; // Bronze
+      
+      return `
+      <div class="leader-row">
+        <div class="leader-left">
+          <div class="leader-rank" style="color:${rankColor}">#${rank}</div>
+          <img src="${user.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" class="leader-img">
+          <div class="leader-info">
+             <div>${user.first_name}</div>
+             <small>Lvl ${user.level || 1}</small>
+          </div>
+        </div>
+        <div class="leader-score">
+           ${user.is_verified ? 'Verified' : ''}
+        </div>
+      </div>
+    `}).join('');
+    
+  } catch(e) { list.innerHTML = "Error loading."; }
+}
+
+// --- BATTLE SYSTEM ---
 window.startAdventure = async () => {
   if(userData.hp <= 0) { alert("You are too weak! Heal first."); return; }
   
@@ -123,22 +159,15 @@ window.startAdventure = async () => {
     const res = await fetch(`/api/battle?action=start&id=${u.id}`);
     const data = await res.json();
     
-    // Store Monster State Locally
-    currentBattle = { 
-        monster: data.monster, 
-        currentMonsterHp: data.monster.hp 
-    };
-    
+    currentBattle = { monster: data.monster, currentMonsterHp: data.monster.hp };
     updateBattleUI();
     logBattle(`⚔️ A wild **${data.monster.name}** appeared!`);
   } catch(e) { logBattle("Error finding monster."); }
 };
 
-// 2. Combat Action (Attack, Dodge, Heal, Flee)
 window.combatAction = async (type) => {
   if(!currentBattle || currentBattle.currentMonsterHp <= 0) return;
 
-  // Visual Animation
   const img = document.getElementById("monsterImage");
   img.style.transform = "scale(0.9)"; setTimeout(()=>img.style.transform="", 150);
 
@@ -149,44 +178,48 @@ window.combatAction = async (type) => {
     });
     const result = await res.json();
     
-    // Updates
+    showDamage(result.dmg_dealt);
     userData.hp = result.user_hp;
     userData.coins = result.user_coins;
     
-    if(result.dmg_dealt > 0) showDamage(result.dmg_dealt);
-    logBattle(result.msg);
+    if(result.dmg_dealt > 0) logBattle(`💥 You dealt ${result.dmg_dealt}.`);
+    if(result.dmg_taken > 0) logBattle(`💔 Took ${result.dmg_taken} dmg.`);
+    if(result.msg) logBattle(result.msg);
 
-    // Monster HP Logic
     currentBattle.currentMonsterHp -= result.dmg_dealt;
-    const maxHp = currentBattle.monster.hp || currentBattle.monster.max_hp;
+    const maxHp = currentBattle.monster.max_hp || currentBattle.monster.hp;
     const pct = Math.max(0, (currentBattle.currentMonsterHp / maxHp) * 100);
     document.getElementById("monsterHpBar").style.width = `${pct}%`;
 
-    // Check Outcome
     if (currentBattle.currentMonsterHp <= 0) {
-        alert(`🏆 VICTORY! +${result.reward_coins || 0} Coins`);
-        closeBattle();
-        syncUser();
+        // WIN
+        const winRes = await fetch('/api/battle', {
+           method: 'POST', headers: {'Content-Type': 'application/json'},
+           body: JSON.stringify({ action: 'claim_win', userId: u.id, monsterId: currentBattle.monster.slug })
+        });
+        const winData = await winRes.json();
+        
+        logBattle(`🏆 Victory! +${winData.coins} Coins`);
+        if(winData.levelUp) alert("🎉 LEVEL UP!");
+        
+        setTimeout(() => { closeBattle(); syncUser(); }, 1500);
     } else if (result.outcome === 'loss') {
         alert("💀 You Died!");
-        closeBattle();
-        syncUser();
+        closeBattle(); syncUser();
     } else if (result.outcome === 'fled') {
         closeBattle();
     }
     
-    updateProfileUI(); // Update Health/Coins
+    updateProfileUI();
 
   } catch(e) { console.error(e); }
 };
 
-// Helpers
+// --- HELPERS ---
 function updateBattleUI() {
   if(!currentBattle) return;
-  const m = currentBattle.monster;
-  
-  document.getElementById("monsterName").innerText = m.name;
-  document.getElementById("monsterImage").src = m.image_url || m.img || "https://placehold.co/150";
+  document.getElementById("monsterName").innerText = currentBattle.monster.name;
+  document.getElementById("monsterImage").src = currentBattle.monster.image_url || "https://placehold.co/150";
   document.getElementById("monsterHpBar").style.width = `100%`;
 }
 
@@ -203,6 +236,7 @@ function logBattle(msg) {
 }
 
 function showDamage(amount) {
+  if(!amount) return;
   const overlay = document.getElementById("damageOverlay");
   const el = document.createElement("div");
   el.className = "damage-text";
@@ -218,7 +252,6 @@ async function loadShop() {
   try {
     const res = await fetch('/api/shop?type=list');
     const items = await res.json();
-    
     grid.innerHTML = items.map(item => `
       <div class="item-card" onclick="buyItem('${item.slug}')">
         <div style="font-size:2rem; margin-bottom:5px">${item.icon || '⚔️'}</div>
