@@ -1,112 +1,115 @@
 const connectDB = require('./lib/db');
-const { User, Monster } = require('./lib/models');
+const { User } = require('./lib/models');
 
-// ➤ MONSTER DATABASE (With Your Images)
-const HARDCODED_MONSTERS = [
-  // Level 1-5 (Small)
-  { slug: 'goblin', name: 'Sneaky Goblin', lvl: 1, hp: 30, atk: 5, gold: 10, img: 'https://cdn-icons-png.flaticon.com/512/3062/3062634.png' },
-  { slug: 'wolf', name: 'Dire Wolf', lvl: 3, hp: 50, atk: 8, gold: 20, img: 'https://cdn-icons-png.flaticon.com/512/616/616554.png' },
-  
-  // Level 10+ (Bosses - Your Uploads)
-  { slug: 'floraxa', name: 'Floraxa', lvl: 10, hp: 200, atk: 25, gold: 100, img: 'https://i.ibb.co/3Wpq56b/1000389884.jpg' }, // Updated Link Placeholder - You should replace with actual hosted links if needed, but I'll use the ones you sent if they are public. Since I cannot see hosted links for uploaded files, I will assume you will replace these strings with the links I provide below in the message.
-  
-  // FOR NOW using placeholders. YOU MUST REPLACE THESE URLS with the public links of the images you uploaded.
-  // Since you uploaded them here, you need to host them (e.g. imgbb) or use the links if you have them.
-  // I will use standard placeholders, PLEASE REPLACE with your links.
-  
-  { slug: 'drakor', name: 'Drakor', lvl: 15, hp: 350, atk: 40, gold: 200, img: 'https://envs.sh/HqM.jpg' }, 
-  { slug: 'glacier', name: 'Glacier', lvl: 20, hp: 500, atk: 55, gold: 300, img: 'https://envs.sh/HqN.jpg' },
-  { slug: 'voltrix', name: 'Voltrix', lvl: 25, hp: 600, atk: 70, gold: 400, img: 'https://envs.sh/HqO.jpg' },
-  { slug: 'grudor', name: 'Grudor', lvl: 30, hp: 800, atk: 85, gold: 500, img: 'https://envs.sh/HqP.jpg' },
-  { slug: 'zarnok', name: 'Zarnok', lvl: 35, hp: 1000, atk: 100, gold: 700, img: 'https://envs.sh/HqQ.jpg' },
-  { slug: 'venmora', name: 'Venmora', lvl: 40, hp: 1200, atk: 120, gold: 900, img: 'https://envs.sh/HqR.jpg' },
-  { slug: 'abyzoth', name: 'Abyzoth', lvl: 50, hp: 2000, atk: 150, gold: 1500, img: 'https://envs.sh/HqS.jpg' },
-  { slug: 'silicox', name: 'Silicox', lvl: 60, hp: 3000, atk: 200, gold: 2000, img: 'https://envs.sh/HqU.jpg' },
-  { slug: 'nimbrax', name: 'Nimbrax', lvl: 70, hp: 4000, atk: 250, gold: 3000, img: 'https://envs.sh/HqV.jpg' }
+// ➤ ENEMIES LIST (From addenemy.py + Your Images)
+const ENEMIES = [
+  { slug: 'goblin', name: 'Sneaky Goblin', hp: 30, atk: [3, 5], coins: 10, quote: "Hehe...", img: 'https://cdn-icons-png.flaticon.com/512/3062/3062634.png' },
+  { slug: 'wolf', name: 'Dire Wolf', hp: 50, atk: [5, 8], coins: 20, quote: "Grrr...", img: 'https://cdn-icons-png.flaticon.com/512/616/616554.png' },
+  { slug: 'drakor', name: 'Drakor', hp: 145, atk: [10, 13], coins: 100, quote: "Flames dance at my command.", img: 'https://files.catbox.moe/yjqp8n.jpg' },
+  { slug: 'glacier', name: 'Glacier', hp: 138, atk: [9, 11], coins: 90, quote: "Frozen wrath of mountains.", img: 'https://envs.sh/HqE.jpg' },
+  { slug: 'grudor', name: 'Grudor', hp: 150, atk: [7, 10], coins: 110, quote: "Stone and steel.", img: 'https://files.catbox.moe/5xprol.jpg' },
+  { slug: 'zarnok', name: 'Zarnok', hp: 135, atk: [11, 14], coins: 120, quote: "Shadows bend to my will.", img: 'https://files.catbox.moe/avzr6a.jpg' },
+  { slug: 'venmora', name: 'Venmora', hp: 136, atk: [10, 13], coins: 100, quote: "My venom is your demise.", img: 'https://files.catbox.moe/2gjal5.jpg' },
+  { slug: 'silicox', name: 'Silicox', hp: 142, atk: [9, 12], coins: 105, quote: "Electricity courses through me.", img: 'https://files.catbox.moe/rnad1x.jpg' },
+  { slug: 'abyzoth', name: 'Abyzoth', hp: 148, atk: [12, 15], coins: 130, quote: "Harbinger of souls.", img: 'https://files.catbox.moe/xdwbyu.jpg' },
+  { slug: 'voltrix', name: 'Voltrix', hp: 137, atk: [8, 11], coins: 95, quote: "Crystals reveal fate.", img: 'https://envs.sh/HC_.jpg' },
+  { slug: 'floraxa', name: 'Floraxa', hp: 155, atk: [13, 16], coins: 140, quote: "Nature's fury.", img: 'https://files.catbox.moe/msdb4a.jpg' },
+  { slug: 'nimbrax', name: 'Nimbrax', hp: 155, atk: [13, 16], coins: 140, quote: "Storms gather.", img: 'https://files.catbox.moe/pxe6dd.jpg' }
 ];
 
-// Note: Replace the URLs above with the actual links where your images are hosted.
+// Helper: Random Integer
+const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 module.exports = async (req, res) => {
   await connectDB();
   const { action, id, userId, monsterId } = req.body.action ? req.body : req.query;
 
-  // --- 1. START BATTLE ---
+  // --- 1. HUNT (Find Enemy) ---
   if (action === 'start') {
     const user = await User.findOne({ tg_id: id });
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    // Fetch Custom Monsters from DB first
-    const dbMonsters = await Monster.find({});
-    const allMonsters = [...HARDCODED_MONSTERS, ...dbMonsters];
+    // Simple Logic: Pick random enemy
+    const enemy = ENEMIES[Math.floor(Math.random() * ENEMIES.length)];
 
-    // Filter by Level
-    let pool = allMonsters.filter(m => m.lvl <= user.level + 5);
-    if (pool.length === 0) pool = [HARDCODED_MONSTERS[0]];
-    
-    const randomMonster = pool[Math.floor(Math.random() * pool.length)];
-
-    // Ensure image URL is passed correctly
     return res.json({ 
         monster: {
-            ...randomMonster,
-            // Handle DB vs Hardcoded difference
-            image_url: randomMonster.img || randomMonster.image_url 
+            slug: enemy.slug,
+            name: enemy.name,
+            hp: enemy.hp,
+            max_hp: enemy.hp,
+            quote: enemy.quote,
+            image_url: enemy.img
         } 
     });
   }
 
-  // --- 2. ATTACK LOGIC ---
+  // --- 2. ATTACK (Turn Based) ---
   if (action === 'attack') {
     const user = await User.findOne({ tg_id: userId });
-    
-    // Find monster in both lists
-    const dbMonster = await Monster.findOne({ slug: monsterId });
-    const hardcodedMonster = HARDCODED_MONSTERS.find(m => m.slug === monsterId);
-    const monster = dbMonster || hardcodedMonster || HARDCODED_MONSTERS[0];
+    const enemy = ENEMIES.find(m => m.slug === monsterId) || ENEMIES[0];
 
-    const dmgDealt = Math.floor(user.attack * (1 + Math.random() * 0.2)); 
-    const monsterAtk = monster.atk || monster.attack || 5; // Fallback
-    const dmgTaken = Math.max(1, monsterAtk - (user.defense || 0));
+    // Player Damage Calculation
+    // Using Range from User Data (from character)
+    const pMin = user.damage_min || 5;
+    const pMax = user.damage_max || 10;
+    const playerDmg = rand(pMin, pMax);
 
-    user.hp -= dmgTaken;
-    if (user.hp <= 0) user.hp = 0;
-    
+    // Enemy Damage Calculation
+    const eMin = enemy.atk[0];
+    const eMax = enemy.atk[1];
+    let enemyDmg = rand(eMin, eMax);
+
+    // Defense Reduction
+    const def = user.defense || 0;
+    // Simple logic: Defense reduces damage by flat amount or percentage. 
+    // Let's do: damage = max(1, enemyDmg - (def / 10)) to keep it balanced
+    enemyDmg = Math.max(1, Math.floor(enemyDmg - (def / 10)));
+
+    // Update User HP
+    user.hp -= enemyDmg;
+    if (user.hp < 0) user.hp = 0;
     await user.save();
 
     return res.json({
-      dmg_dealt: dmgDealt,
-      dmg_taken: dmgTaken,
+      dmg_dealt: playerDmg,
+      dmg_taken: enemyDmg,
       user_hp: user.hp,
-      monster_max_hp: monster.hp || monster.max_hp,
-      reward_gold: monster.gold || monster.reward_gold
+      monster_name: enemy.name,
+      reward_coins: enemy.coins
     });
   }
   
-  // --- 3. CLAIM WIN ---
+  // --- 3. VICTORY (Claim) ---
   if (action === 'claim_win') {
       const user = await User.findOne({ tg_id: userId });
-      const dbMonster = await Monster.findOne({ slug: monsterId });
-      const hardcodedMonster = HARDCODED_MONSTERS.find(m => m.slug === monsterId);
-      const monster = dbMonster || hardcodedMonster;
+      const enemy = ENEMIES.find(m => m.slug === monsterId);
       
-      if(user && monster) {
-          const goldReward = monster.gold || monster.reward_gold || 10;
-          const xpReward = (monster.gold || 10) * 2;
-
-          user.gold += goldReward;
-          user.xp += xpReward;
+      if(user && enemy) {
+          const xpGain = rand(2, 5);
+          const coinsGain = rand(10, 20) + enemy.coins;
           
-          if (user.xp >= user.level * 100) {
+          user.coins += coinsGain;
+          user.xp += xpGain;
+          user.kills += 1;
+
+          // Level Up Logic
+          let levelUp = false;
+          if (user.xp >= user.exp_max) {
               user.level += 1;
-              user.max_hp += 20;
-              user.attack += 5;
-              user.hp = user.max_hp;
+              user.xp = 0; // Reset or keep overflow
+              user.exp_max = Math.floor(user.exp_max * 1.3);
+              user.damage_min += 1;
+              user.damage_max += 1;
+              user.max_hp += 10;
+              user.hp = user.max_hp; // Full Heal
+              levelUp = true;
           }
+          
           await user.save();
-          return res.json({ success: true, gold: user.gold, level: user.level });
+          return res.json({ success: true, coins: coinsGain, xp: xpGain, levelUp: levelUp });
       }
   }
 
-  res.json({ error: "Invalid Action" });
+  res.json({ error: "Invalid" });
 };
