@@ -41,7 +41,7 @@
           <span class="material-icons-round">chevron_right</span>
         </div>
 
-        <div class="mode-card locked" onclick="alert('Coming Soon!')">
+        <div class="mode-card locked" onclick="alert('PvP Arena Coming Soon!')">
           <div class="mode-icon">⚔️</div>
           <div class="mode-info">
             <h3>PvP Arena</h3>
@@ -66,10 +66,13 @@
             <div class="hp-bar-wrapper">
               <div class="hp-bar-fill" id="monsterHpBar" style="width: 100%;"></div>
             </div>
+            
             <img id="monsterImage" src="https://placehold.co/150" class="monster-img floating">
+            
             <div class="monster-stats">
-              <h3 id="monsterName">Loading...</h3>
+              <h3 id="monsterName">Searching...</h3>
             </div>
+            
             <div id="damageOverlay"></div>
           </div>
         </div>
@@ -81,7 +84,7 @@
              <span class="material-icons-round">refresh</span> Next
            </button>
            <button class="battle-btn" style="background:var(--danger)" onclick="beginFight()">
-             <span class="material-icons-round">swords</span> Start Fight
+             <span class="material-icons-round">swords</span> Fight!
            </button>
         </div>
 
@@ -120,7 +123,7 @@
       <div class="profile-header">
         <img id="profileAvatar" src="" class="hero-avatar">
         <div class="hero-info">
-          <h2 id="heroName">Hero</h2>
+          <h2 id="heroName">Loading...</h2>
           <div class="level-badge" id="heroCharName">Character</div>
         </div>
       </div>
@@ -128,7 +131,7 @@
       <div class="stats-container">
         <div class="stat-box">
           <span style="color:#ef4444">❤</span>
-          <span id="heroHp">100</span>
+          <span id="heroHp">100/100</span>
           <small>Health</small>
         </div>
         <div class="stat-box">
@@ -149,7 +152,9 @@
       </div>
 
       <div class="section-title"><h3>Inventory</h3></div>
-      <div class="inventory-grid" id="inventoryList"></div>
+      <div class="inventory-grid" id="inventoryList">
+        <div style="grid-column:1/-1;text-align:center;opacity:0.5">Empty Bag</div>
+      </div>
     </section>
 
     <section id="tab-admin" class="page">
@@ -159,16 +164,16 @@
         <div class="admin-section">
             <h3>Add Shop Item</h3>
             <div class="admin-input-group">
-                <input type="text" id="admItemName" placeholder="Name" class="admin-input">
+                <input type="text" id="admItemName" placeholder="Name (e.g. Sword)" class="admin-input">
                 <input type="text" id="admItemSlug" placeholder="Slug (unique)" class="admin-input">
                 <div style="display:flex;gap:5px">
                     <input type="number" id="admItemPrice" placeholder="Price" class="admin-input">
                     <input type="number" id="admItemPower" placeholder="Power" class="admin-input">
                 </div>
-                <select id="admItemType" class="admin-input" style="background:#000;color:white">
-                    <option value="atk">Weapon</option>
-                    <option value="def">Armor</option>
-                    <option value="hp">Potion</option>
+                <select id="admItemType" class="admin-input" style="background:#000; color:white">
+                    <option value="atk">Weapon (Attack)</option>
+                    <option value="def">Armor (Defense)</option>
+                    <option value="hp">Potion (Heal)</option>
                 </select>
                 <button class="gate-btn" onclick="adminAddItem()">Add Item</button>
             </div>
@@ -177,8 +182,8 @@
         <div class="admin-section" style="margin-top:15px;">
             <h3>Add Monster</h3>
             <div class="admin-input-group">
-                <input type="text" id="admMonName" placeholder="Name" class="admin-input">
-                <input type="text" id="admMonSlug" placeholder="Slug" class="admin-input">
+                <input type="text" id="admMonName" placeholder="Monster Name" class="admin-input">
+                <input type="text" id="admMonSlug" placeholder="Slug (unique)" class="admin-input">
                 <input type="text" id="admMonImg" placeholder="Image URL" class="admin-input">
                 <div style="display:flex;gap:5px">
                     <input type="number" id="admMonHp" placeholder="HP" class="admin-input">
@@ -198,7 +203,7 @@
                         <option value="coins">Give Coins</option>
                         <option value="atk">Boost Attack</option>
                     </select>
-                    <input type="number" id="admBuffAmt" placeholder="Amount (if coins/atk)" class="admin-input">
+                    <input type="number" id="admBuffAmt" placeholder="Amount" class="admin-input">
                 </div>
                 <button class="gate-btn" style="background:var(--success)" onclick="adminBuffUser()">Apply</button>
             </div>
