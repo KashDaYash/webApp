@@ -1,117 +1,88 @@
-```markdown
-# 🚀 Telegram Chat Web App (Ultimate Edition)
+# ⚔️ Telegram RPG BattleBot
 
-A full-featured **Telegram Mini App** for chatting, social networking, and user management. Built with **Vanilla JS (Frontend)** and **Node.js (Serverless API)**.
+A fully functional **Turn-Based RPG Game** inside a Telegram Mini App. Players can fight monsters, level up, buy weapons, and compete on the leaderboard.
 
-## ✨ Features
+Built with **Vanilla JS**, **Node.js (Serverless)**, and **MongoDB**.
 
-### 💬 Messaging System
-* **Real-time Chat:** Instant messaging with auto-refresh.
-* **Sticker Support:** Integrated **Giphy Stickers** inside the chat.
-* **Message Actions:** Long-press to **Delete** or **Copy** messages.
-* **Unread Count:** Real-time badge on chat list for unread messages.
-* **Priority Sorting:** Chats with unread messages appear at the top.
+## 🎮 Game Features
 
-### 🌍 Discover & Social
-* **Discover Tab:** Grid view to find all users registered in the app.
-* **Pagination:** "Load More" button to load users in batches (10 at a time).
-* **Profile Sync:** Automatically syncs Name, Username, and Photo from Telegram.
+### 🏟️ Battle Arena (PvE)
+* **Monster Hunting:** Fight different monsters (Goblins, Dragons, Titans).
+* **Turn-Based Combat:** Attack, Heal, or Flee.
+* **Smart UI:** Health bars, floating animations, and damage numbers.
+* **Progression:** Earn **Gold** and **XP** to level up.
 
-### 🎨 Customization (Premium UI)
-* **Theme Engine:** Toggle between Dark & Light mode.
-* **Custom Background:** Choose **ANY color** via Color Picker.
-* **Gradient Mode:** Enable cool gradient backgrounds.
-* **Instant Apply:** See changes immediately without reloading.
+### 🛒 The Blacksmith (Shop)
+* **Buy Gear:** Purchase Swords, Armor, and Potions using in-game Gold.
+* **Inventory System:** Items are saved to your profile and boost your stats (Attack/Defense).
 
-### 👑 Admin & Owner Portal (Hidden)
-* **Secure Access:** Only the `OWNER_ID` can access the Admin Panel.
-* **User Management:**
-    * **Verify User:** Give/Remove Blue Tick (Verified Badge).
-    * **Ban User:** Block users from sending messages.
-    * **Delete User:** Permanently remove user & chats from DB.
-    * **Promote Admin:** Make other users Sub-Admins.
-* **Live Stats:** See total user count.
+### 👤 Hero Profile
+* **Live Stats:** Track HP, Energy, Attack Power, and XP.
+* **Leveling System:** Auto-level up when XP fills the bar.
+* **Bag:** View your collected items.
+
+### 👑 Admin & Owner Panel (Hidden)
+* **Control Everything:** Add new Items or Monsters directly from the app.
+* **User Management:** Ban hackers, Verify players, or Reset the server.
+* **Secure:** Only the `OWNER_ID` can access this panel.
 
 ---
 
 ## 🛠️ Tech Stack
 
-* **Frontend:** HTML5, CSS3 (Modern Variables), Vanilla JavaScript.
+* **Frontend:** HTML5, CSS3 (Glassmorphism UI), Vanilla JS.
 * **Backend:** Node.js (Vercel Serverless Functions).
-* **Database:** MongoDB (Atlas).
-* **Integrations:** Telegram Web Apps API, Giphy API.
+* **Database:** MongoDB Atlas (Mongoose).
+* **Bot API:** Telegram Web Apps API.
 
 ---
 
-## 🚀 Deployment Guide (Vercel)
+## 🚀 Installation & Deployment
 
-### 1. Prerequisite
-* A **MongoDB Atlas** Database URL.
-* A **Telegram Bot Token** (from @BotFather).
-* Your Telegram **User ID** (to set as Owner).
+### 1. Setup Database
+* Create a **MongoDB Atlas** cluster.
+* Get your connection string (`MONGO_URI`).
 
-### 2. Setup Code
-1.  Clone this repository.
-2.  Open `api/chat.js` and `api/admin.js`.
-3.  Find the line: `const OWNER_ID = 1302298741;`
-4.  **Replace** `1302298741` with **YOUR Telegram ID**.
-5.  Do the same in `profile.js` (Frontend).
+### 2. Configure Code
+* Open `api/admin.js`, `api/battle.js`, and `profile.js`.
+* Replace `const OWNER_ID = 1302298741;` with **YOUR Telegram ID**.
+* (Optional) Update `MONSTERS` list in `api/battle.js` with your own images.
 
 ### 3. Deploy to Vercel
-1.  Install Vercel CLI or upload to GitHub.
-2.  Import project to Vercel.
-3.  **Add Environment Variables** in Vercel Settings:
-
-| Variable Name | Value | Description |
-| :--- | :--- | :--- |
-| `MONGO_URI` | `mongodb+srv://...` | Your MongoDB Connection String |
-| `BOT_TOKEN` | `123456:ABC...` | Your Telegram Bot Token |
-
+1.  Upload code to **GitHub**.
+2.  Import to **Vercel**.
+3.  Set Environment Variables:
+    * `MONGO_URI`: Your Database URL.
+    * `BOT_TOKEN`: Your Telegram Bot Token.
 4.  **Deploy!** 🚀
 
 ---
 
 ## 📂 Project Structure
 
-```
 
 ├── api/
 │   ├── lib/
-│   │   ├── db.js         \# MongoDB Connection
-│   │   └── models.js     \# User & Message Schema
-│   ├── admin.js          \# Admin Actions (Ban/Verify/Delete)
-│   ├── chat.js           \# Messaging Logic & List
-│   ├── search.js         \# Search & Discover Logic
-│   └── syncUser.js       \# Sync Telegram User to DB
-├── profile.html          \# Main UI Structure
-├── profile.css           \# Styling, Themes, Animations
-├── profile.js            \# Frontend Logic, API Calls, UI Events
-└── README.md             \# Documentation
-
-```
-
----
-
-## 🛡️ Admin Panel Guide
-
-1.  Open the App in Telegram.
-2.  Go to the **Settings** tab.
-3.  If your ID matches the `OWNER_ID` in code, you will see a **"Open Admin Portal"** button at the top.
-4.  Click it to manage users.
+│   │   ├── db.js         # DB Connection
+│   │   └── models.js     # User, Monster, Item Schema
+│   ├── admin.js          # Owner Controls (Add Item/Monster)
+│   ├── battle.js         # Fight Logic & Calculations
+│   ├── shop.js           # Buying & Inventory Logic
+│   ├── search.js         # Leaderboard & Discover API
+│   └── syncUser.js       # Login & Stat Initialization
+├── profile.html          # Main Game UI
+├── profile.css           # RPG Theme & Animations
+├── profile.js            # Game Engine & Logic
+└── README.md             # Game Guide
 
 ---
 
-## ⚡ API Endpoints
-
-* `POST /api/syncUser` - Create/Update user.
-* `GET /api/search` - Search users or fetch Discover grid.
-* `GET /api/chat` - Fetch chat history or recent list.
-* `POST /api/chat` - Send a text or sticker.
-* `DELETE /api/chat` - Delete a message.
-* `POST /api/admin` - Perform admin actions (Ban/Verify).
+## 🔮 Future Roadmap
+* **PvP Arena:** Real-time battles between players.
+* **Boss Raids:** Multiplayer cooperative fights.
+* **Trading:** Allow players to trade items.
 
 ---
 
 ## ❤️ Credits
-Created for the **Telegram Mini App** Contest/Project.
-```
+Developed for the Telegram Mini App Ecosystem.
