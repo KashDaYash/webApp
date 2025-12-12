@@ -24,7 +24,7 @@ body { margin: 0; padding: 0; font-family: 'Inter', sans-serif; background: var(
 .gold-display { font-family: 'Cinzel', serif; color: var(--accent); font-weight: bold; font-size: 1.2rem; text-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
 h2, h3 { font-family: 'Cinzel', serif; margin: 0; }
 
-/* BATTLE UI */
+/* BATTLE CARDS */
 .mode-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 12px; display: flex; align-items: center; gap: 15px; cursor: pointer; transition: 0.2s; backdrop-filter: blur(10px); }
 .mode-card:active { transform: scale(0.98); background: rgba(255,255,255,0.05); }
 .mode-icon { font-size: 2rem; }
@@ -32,6 +32,7 @@ h2, h3 { font-family: 'Cinzel', serif; margin: 0; }
 .mode-info p { font-size: 0.8rem; color: #94a3b8; margin: 0; }
 .mode-card.locked { opacity: 0.5; filter: grayscale(1); }
 
+/* BATTLE ARENA */
 .battle-stage { text-align: center; margin-top: 10px; background: radial-gradient(circle, rgba(245,158,11,0.05) 0%, transparent 70%); padding: 20px 0; border: 1px solid var(--border); border-radius: 16px; }
 .monster-img { width: 160px; height: 160px; object-fit: contain; filter: drop-shadow(0 0 20px rgba(0,0,0,0.5)); animation: float 3s ease-in-out infinite; }
 @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
@@ -41,8 +42,9 @@ h2, h3 { font-family: 'Cinzel', serif; margin: 0; }
 
 .battle-log { height: 80px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 15px; font-family: monospace; border: 1px solid var(--border); color: #ccc; }
 
-.battle-controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.battle-btn { padding: 15px; border-radius: 12px; border: 1px solid var(--border); font-weight: bold; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: transform 0.1s; font-size: 0.9rem; }
+/* 4 BUTTON GRID - FIXED ALIGNMENT */
+.battle-controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+.battle-btn { padding: 12px 5px; border-radius: 12px; border: 1px solid var(--border); font-weight: bold; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; transition: transform 0.1s; font-size: 0.85rem; width: 100%; }
 .battle-btn:active { transform: scale(0.95); }
 .battle-btn.attack { background: rgba(239, 68, 68, 0.2); border-color: var(--danger); color: #fca5a5; }
 .battle-btn.dodge { background: rgba(245, 158, 11, 0.2); border-color: var(--accent); color: #fcd34d; }
@@ -82,47 +84,9 @@ h2, h3 { font-family: 'Cinzel', serif; margin: 0; }
 .gate-btn { display: inline-block; width: 100%; padding: 10px; background: var(--accent); color: black; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-decoration: none; text-align: center; }
 
 /* NAVIGATION (FIXED ALIGNMENT) */
-.bottom-nav {
-  height: 70px;
-  background: var(--nav-bg);
-  border-top: 1px solid var(--border);
-  display: flex;
-  /* Use space-between for better spacing on small screens */
-  justify-content: space-around; 
-  align-items: center;
-  position: fixed;
-  bottom: 0;
-  width: 100%;
-  z-index: 100;
-  padding-bottom: env(safe-area-inset-bottom);
-  backdrop-filter: blur(15px);
-  padding-left: 5px; padding-right: 5px;
-}
-
-.nav-item {
-  /* Allow items to shrink/grow evenly to fit screen */
-  flex: 1;
-  min-width: 0; /* Prevents overflow */
-  color: #64748b;
-  padding: 5px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 0.7;
-  transform: scale(1);
-}
-
-.nav-item.active {
-  color: var(--accent);
-  opacity: 1;
-  /* Slight pop, not too big */
-  transform: translateY(-4px) scale(1.1); 
-}
-
+.bottom-nav { height: 70px; background: var(--nav-bg); border-top: 1px solid var(--border); display: flex; justify-content: space-around; align-items: center; position: fixed; bottom: 0; width: 100%; z-index: 100; padding-bottom: env(safe-area-inset-bottom); backdrop-filter: blur(15px); padding-left:5px; padding-right:5px; }
+.nav-item { flex: 1; min-width: 0; color: #64748b; padding: 5px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); opacity: 0.7; transform: scale(1); }
+.nav-item.active { color: var(--accent); opacity: 1; transform: translateY(-4px) scale(1.1); }
 .nav-item span.material-icons-round { font-size: 24px; }
 .nav-text { font-size: 0.65rem; font-weight: 600; white-space: nowrap; }
 
