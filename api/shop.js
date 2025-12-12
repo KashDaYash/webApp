@@ -12,6 +12,7 @@ const DEFAULTS = [
 module.exports = async (req, res) => {
   await connectDB();
   const method = req.method;
+  // Handle query params vs body
   const { type, action, userId, itemSlug, targetId, amount, stat } = method === 'POST' ? req.body : req.query;
 
   try {
@@ -63,8 +64,6 @@ module.exports = async (req, res) => {
     // 3. ADMIN: HEAL/BUFF USER (God Mode)
     if (action === 'admin_buff') {
         // Security check should be in frontend or middleware, but checking here too
-        // For simplicity assuming caller is verified owner in frontend
-        
         const target = await User.findOne({ tg_id: targetId });
         if (!target) return res.status(404).json({ error: "User not found" });
 
