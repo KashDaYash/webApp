@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
-  <title>WebApp</title>
+  <title>RPG BattleBot</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.10.2/lottie.min.js"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
   <link rel="stylesheet" href="profile.css"/>
 </head>
@@ -17,136 +16,161 @@
 
   <div id="loginGate" class="login-gate hidden">
     <div class="gate-content">
-      <div class="gate-icon">🚀</div>
-      <h1>Open in Telegram</h1>
-      <p>This experience is designed for the Telegram App.</p>
-      <a href="https://t.me/YOUR_BOT_USERNAME/app" class="gate-btn">Launch App</a>
+      <div class="gate-icon">⚔️</div>
+      <h1>Enter the Arena</h1>
+      <p>Play this RPG inside Telegram.</p>
+      <a href="https://t.me/YOUR_BOT_USERNAME/app" class="gate-btn">Open Game</a>
     </div>
   </div>
 
   <main id="app" class="hidden">
     
-    <section id="tab-profile" class="page active-page">
-      <div class="profile-card">
-        <button id="themeToggle" class="theme-btn-float" onclick="toggleTheme()">
-          <span class="material-icons-round">dark_mode</span>
-        </button>
-        <div class="avatar-wrapper">
-          <div id="lottie" class="lottie-glow"></div>
-          <img id="userAvatar" class="avatar" src=""/>
-        </div>
-        <h2 id="userName">Loading...</h2>
-        <div class="stats-row">
-           <div class="stat-item"><span class="stat-val" id="friendsCount">0</span><span class="stat-label">Chats</span></div>
-           <div class="stat-item"><span class="stat-val" id="userLanguage">EN</span><span class="stat-label">Lang</span></div>
-        </div>
-        <div class="profile-body">
-           <div class="info-box copyable"><span class="material-icons-round icon">fingerprint</span><span id="userId" class="text-val">...</span></div>
-           <div class="info-box copyable"><span class="material-icons-round icon">alternate_email</span><span id="userHandle" class="text-val">...</span></div>
-        </div>
+    <section id="tab-arena" class="page active-page">
+      <div class="page-header">
+        <h2>Battle Arena</h2>
+        <div class="gold-display">💰 <span id="userGold">0</span></div>
       </div>
-    </section>
 
-    <section id="tab-chat" class="page">
-      <div class="page-header"><h2>Messages</h2></div>
-      <div class="search-sticky">
-        <div class="search-input-wrapper">
-          <span class="material-icons-round">search</span>
-          <input type="text" id="userSearch" placeholder="Search..." autocomplete="off">
+      <div id="arenaLobby">
+        <div class="mode-card" onclick="startAdventure()">
+          <div class="mode-icon">🌲</div>
+          <div class="mode-info">
+            <h3>Adventure (PvE)</h3>
+            <p>Hunt monsters & gain XP</p>
+          </div>
+          <span class="material-icons-round">chevron_right</span>
+        </div>
+
+        <div class="mode-card locked" onclick="alert('PvP Coming Soon!')">
+          <div class="mode-icon">⚔️</div>
+          <div class="mode-info">
+            <h3>PvP Arena</h3>
+            <p>Duel other players</p>
+          </div>
+          <span class="material-icons-round">lock</span>
+        </div>
+        
+        <div class="mode-card locked" onclick="alert('Boss Raid Coming Soon!')">
+          <div class="mode-icon">🐲</div>
+          <div class="mode-info">
+            <h3>Boss Raid</h3>
+            <p>Team up against Titans</p>
+          </div>
+          <span class="material-icons-round">lock</span>
         </div>
       </div>
-      <div id="suggestionList" class="user-list"></div>
-      <div id="recentChatsList" class="user-list"></div>
-      <div id="emptyChatState" class="empty-state hidden">
-        <span class="material-icons-round">forum</span><p>No chats yet</p>
-      </div>
-    </section>
 
-    <section id="tab-discover" class="page">
-      <div class="page-header"><h2>Discover</h2></div>
-      <div id="discoverGrid" class="users-grid"></div>
-      <div id="loadMoreContainer" class="load-more-container hidden" style="text-align:center; padding:20px;">
-         <button onclick="loadMoreUsers()" class="gate-btn" style="width:auto; padding:8px 24px; font-size:0.9rem;">Load More</button>
-      </div>
-    </section>
-
-    <section id="tab-notif" class="page">
-      <div class="page-header"><h2>Notifications</h2></div>
-      <div class="empty-state" style="margin-top: 50px;">
-        <span class="material-icons-round" style="font-size: 4rem; opacity: 0.2;">notifications_none</span>
-        <p style="opacity: 0.6;">All caught up!</p>
-      </div>
-    </section>
-
-    <section id="tab-settings" class="page">
-      <div class="page-header"><h2>Settings</h2></div>
-      <div class="menu-list">
-        <div class="menu-row clickable-row">
-          <div class="row-left"><span class="material-icons-round" style="color:#a855f7">palette</span> Change Background</div>
-          <div class="row-right">
-            <div class="color-wrapper">
-              <input type="color" id="bgPicker" value="#0f0f0f">
-              <div class="color-preview" id="colorPreviewBox"></div>
+      <div id="battleScreen" class="hidden">
+        
+        <div class="battle-stage">
+          <div class="monster-container">
+            <div class="hp-bar-wrapper">
+              <div class="hp-bar-fill" id="monsterHpBar" style="width: 100%;"></div>
             </div>
+            <img id="monsterImage" src="" class="monster-img floating">
+            <div class="monster-stats">
+              <h3 id="monsterName">Monster</h3>
+              <span>Lvl <span id="monsterLvl">1</span></span>
+            </div>
+            <div id="damageOverlay"></div>
           </div>
         </div>
-        <div class="menu-row">
-          <div class="row-left"><span class="material-icons-round" style="color:#3b82f6">gradient</span> Gradient Mode</div>
-          <div class="row-right">
-            <label class="switch"><input type="checkbox" id="gradientToggle"><span class="slider"></span></label>
-          </div>
+
+        <div id="battleLog" class="battle-log">
+          <div class="log-entry">Battle Started!</div>
         </div>
-        <div class="menu-row" onclick="resetThemeToDefault()">
-          <div class="row-left"><span class="material-icons-round" style="color:#ef4444">restart_alt</span> Reset Theme</div>
-        </div>
-        <div class="menu-row danger" onclick="Telegram.WebApp.close()">
-           <div class="row-left"><span class="material-icons-round">logout</span> Close App</div>
+
+        <div class="battle-controls">
+          <button class="action-btn attack" onclick="performAttack()">
+            <span class="material-icons-round">sword_forces</span> Attack
+          </button>
+          <button class="action-btn heal" onclick="usePotion()">
+            <span class="material-icons-round">healing</span> Heal
+          </button>
+          <button class="action-btn flee" onclick="fleeBattle()">
+            <span class="material-icons-round">run_circle</span> Flee
+          </button>
         </div>
       </div>
+    </section>
+
+    <section id="tab-shop" class="page">
+      <div class="page-header"><h2>Blacksmith</h2></div>
+      <div class="shop-grid" id="shopList">
+        <div style="text-align:center; grid-column:1/-1; opacity:0.5; padding:20px;">
+          Opening Shop...
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-profile" class="page">
+      <div class="profile-header">
+        <img id="profileAvatar" src="" class="hero-avatar">
+        <div class="hero-info">
+          <h2 id="heroName">Hero</h2>
+          <div class="level-badge">Lvl <span id="heroLevel">1</span></div>
+        </div>
+      </div>
+
+      <div class="stats-container">
+        <div class="stat-box">
+          <span class="material-icons-round" style="color:#ef4444">favorite</span>
+          <span id="heroHp">100/100</span>
+          <small>Health</small>
+        </div>
+        <div class="stat-box">
+          <span class="material-icons-round" style="color:#f59e0b">bolt</span>
+          <span id="heroEnergy">20/20</span>
+          <small>Energy</small>
+        </div>
+        <div class="stat-box">
+          <span class="material-icons-round" style="color:#3b82f6">colorize</span>
+          <span id="heroAttack">10</span>
+          <small>Attack</small>
+        </div>
+      </div>
+
+      <div class="xp-container">
+        <div class="xp-label"><span>XP Progress</span><span id="xpText">0/100</span></div>
+        <div class="xp-bar-bg"><div class="xp-bar-fill" id="heroXpBar" style="width: 0%"></div></div>
+      </div>
+
+      <div class="section-title"><h3>Inventory</h3></div>
+      <div class="inventory-grid" id="inventoryList">
+        </div>
+      
+      <div id="adminLinkArea" style="margin-top:20px;"></div>
     </section>
 
     <section id="tab-admin" class="page">
-      <div class="page-header"><h2>👑 Admin Panel</h2></div>
-      <div class="search-input-wrapper" style="margin-bottom:20px;">
-        <span class="material-icons-round">search</span>
-        <input type="text" id="adminSearch" placeholder="Search DB..." oninput="filterAdminList()">
+      <div class="page-header"><h2>👑 Game Master</h2></div>
+      <div class="menu-list">
+        <div class="menu-row" onclick="createMonster()">
+           <span class="material-icons-round">add_circle</span> Add Monster
+        </div>
+        <div class="menu-row" onclick="createItem()">
+           <span class="material-icons-round">inventory_2</span> Add Item
+        </div>
+        <div id="adminConsole" style="padding:10px; font-family:monospace; font-size:0.8rem; color:#aaa;"></div>
       </div>
-      <div class="admin-stats-card">
-        <div class="stat"><h3 id="totalUsers">0</h3><small>Users</small></div>
-      </div>
-      <div id="adminUserList" class="menu-list"></div>
     </section>
 
   </main>
 
   <nav id="bottomNav" class="bottom-nav hidden">
-    <div class="nav-item active" onclick="switchTab('tab-profile', this)"><span class="material-icons-round">person</span></div>
-    <div class="nav-item" onclick="switchTab('tab-chat', this)"><span class="material-icons-round">chat_bubble</span></div>
-    <div class="nav-item" onclick="switchTab('tab-discover', this)"><span class="material-icons-round">explore</span></div>
-    <div class="nav-item" onclick="switchTab('tab-notif', this)"><span class="material-icons-round">notifications</span></div>
-    <div class="nav-item" onclick="switchTab('tab-settings', this)"><span class="material-icons-round">settings</span></div>
+    <div class="nav-item active" onclick="switchTab('tab-arena', this)">
+      <span class="material-icons-round">swords</span>
+      <span class="nav-text">Arena</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('tab-shop', this)">
+      <span class="material-icons-round">storefront</span>
+      <span class="nav-text">Shop</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('tab-profile', this)">
+      <span class="material-icons-round">account_circle</span>
+      <span class="nav-text">Hero</span>
+    </div>
   </nav>
-
-  <div id="chatRoom" class="chat-room-overlay">
-    <div class="chat-room-header">
-      <button class="back-btn" onclick="closeChat()"><span class="material-icons-round">arrow_back_ios</span></button>
-      <img id="chatPartnerImg" src="" class="header-avatar">
-      <div class="header-info"><h3 id="chatPartnerName">User</h3><span class="status">Online</span></div>
-    </div>
-    
-    <div id="messageArea" class="messages-container"></div>
-    
-    <div id="stickerPicker" class="sticker-picker hidden"></div>
-
-    <div class="chat-input-bar">
-      <button class="icon-btn" onclick="toggleStickerPicker()" style="margin-right:8px; color:var(--text-sec)">
-        <span class="material-icons-round">sentiment_satisfied_alt</span>
-      </button>
-
-      <input type="text" id="msgInput" placeholder="Message..." autocomplete="off" onkeypress="if(event.key === 'Enter') sendMsg()">
-      <button id="sendBtn" class="send-fab" onclick="sendMsg()"><span class="material-icons-round">send</span></button>
-    </div>
-  </div>
 
   <script src="profile.js"></script>
 </body>
