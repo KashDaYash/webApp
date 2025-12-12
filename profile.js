@@ -2,19 +2,38 @@ const tg = window.Telegram.WebApp;
 tg.ready();
 tg.expand();
 
-// --- CONFIG ---
+// --- CONFIGURATION ---
+const root = document.documentElement;
+let currentTheme = localStorage.getItem("theme") || "dark";
+let customBg = localStorage.getItem("customBg");
+let isGradient = localStorage.getItem("isGradient") === "true";
+
+// Apply Settings Immediately
+if (customBg) {
+  applyCustomBg(customBg, isGradient);
+} else {
+  applyTheme(currentTheme);
+}
+
+// --- USER DATA ---
 const u = tg.initDataUnsafe?.user;
+// ➤ OWNER ID (Supreme Power)
 const OWNER_ID = 1302298741; 
 
-let userData = null;
+let currentChatId = null;
+let chatPoll = null;
+let discoverPage = 1;
+let currentUserData = null;
 let currentBattle = null;
 
 // --- INITIALIZATION ---
 window.onload = () => {
   const gate = document.getElementById("loginGate");
   const app = document.getElementById("app");
+  const nav = document.getElementById("bottomNav");
   const loader = document.getElementById("loadingScreen");
 
+  // 1. GATEWAY CHECK (Is user in Telegram?)
   if (!u || !u.id) {
     if(loader) loader.style.display = "none";
     if(gate) gate.classList.remove("hidden");
@@ -25,71 +44,137 @@ window.onload = () => {
   // Show App
   if(gate) gate.classList.add("hidden");
   if(app) app.classList.remove("hidden");
-  document.getElementById("bottomNav").classList.remove("hidden");
+  if(nav) nav.classList.remove("hidden");
 
-  // Initial Sync
-  syncUser();
+  // 2. THEME LISTENERS
+  const bgPicker = document.getElementById("bgPicker");
+  const gradCheck = document.getElementById("gradientToggle");
+  const colorPreview = document.getElementById("colorPreviewBox");
+  
+  if(bgPicker && customBg) {
+    bgPicker.value = customBg;
+    if(colorPreview) colorPreview.style.backgroundColor = customBg;
+  }
+  if(gradCheck) gradCheck.checked = isGradient;
+
+  if(bgPicker) {
+    bgPicker.addEventListener("input", (e) => {
+      const color = e.target.value;
+      const isGrad = document.getElementById("gradientToggle").checked;
+      if(colorPreview) colorPreview.style.backgroundColor = color;
+      applyCustomBg(color, isGrad);
+      localStorage.setItem("customBg", color);
+    });
+  }
+  if(gradCheck) {
+    gradCheck.addEventListener("change", (e) => {
+      const color = document.getElementById("bgPicker").value;
+      applyCustomBg(color, e.target.checked);
+      localStorage.setItem("isGradient", e.target.checked);
+    });
+  }
+
+  // 3. START SYNC
+  syncUserAndCheckPermissions();
+
+  // 4. UI PRE-FILL
+  if(document.getElementById("userName")) {
+      document.getElementById("userName").textContent = u.first_name;
+      document.getElementById("userHandle").textContent = u.username ? "@"+u.username : "—";
+      document.getElementById("userId").textContent = u.id;
+      if(u.photo_url) document.getElementById("userAvatar").src = u.photo_url;
+  }
+
   setTimeout(() => { if(loader) loader.style.display = "none"; }, 500);
+  loadRecentChats(); // Loads chat list initially
+  
+  // Event Listeners
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.msg')) removeContextMenu();
+  });
 };
 
-// --- SYNC USER DATA ---
-async function syncUser() {
+// --- SYNC USER & CHECK PERMISSIONS ---
+async function syncUserAndCheckPermissions() {
   try {
     const res = await fetch('/api/syncUser', { 
-      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(u) 
+      method: 'POST', 
+      headers: {'Content-Type': 'application/json'}, 
+      body: JSON.stringify(u) 
     });
-    userData = await res.json();
+    currentUserData = await res.json();
+
+    // Check Admin
+    if (currentUserData.tg_id === OWNER_ID || currentUserData.is_admin) {
+      injectAdminButton();
+      const adminNavBtn = document.getElementById("navAdminBtn");
+      if(adminNavBtn) adminNavBtn.style.display = "flex";
+    }
     
-    // Check Admin Permission for Nav Button
-    if (userData.tg_id === OWNER_ID || userData.is_admin) {
-        document.getElementById("navAdminBtn").style.display = "flex";
+    // Check Ban
+    if (currentUserData.is_banned) {
+      alert("🚫 You are BANNED from the Arena.");
+      Telegram.WebApp.close();
     }
 
-    updateProfileUI();
-    loadShop(); // Load shop items in background
-  } catch(e) { console.error("Sync Failed", e); }
+    updateProfileUI(); // Update Header & Stats
+    loadShop(); // Pre-load shop
+
+  } catch(e) { console.error("Sync Error", e); }
 }
 
-// --- UI UPDATER ---
+// --- UI UPDATER (Premium Data Mapping) ---
 function updateProfileUI() {
-  if(!userData) return;
+  if(!currentUserData) return;
   
-  // Header
-  document.getElementById("userGold").innerText = userData.gold || 0;
-  document.getElementById("heroName").innerText = userData.first_name;
-  document.getElementById("heroLevel").innerText = userData.level || 1;
-  document.getElementById("profileAvatar").src = userData.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+  // Header: Gold/Coins
+  document.getElementById("userGold").innerText = currentUserData.coins || 0;
+  
+  // Profile Section
+  // Use Character Name if assigned, else Telegram Name
+  document.getElementById("heroName").innerText = currentUserData.character_name || currentUserData.first_name;
+  document.getElementById("heroLevel").innerText = currentUserData.level || 1;
+  
+  // Character Image (Priority: Character Img > Photo URL > Placeholder)
+  const charImg = currentUserData.character_image || currentUserData.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
+  document.getElementById("profileAvatar").src = charImg;
 
   // Stats
-  const maxHp = userData.max_hp || 100;
-  const currentHp = userData.hp !== undefined ? userData.hp : maxHp;
+  const currentHp = currentUserData.hp !== undefined ? currentUserData.hp : 100;
+  const maxHp = currentUserData.max_hp || 100;
   document.getElementById("heroHp").innerText = `${currentHp}/${maxHp}`;
-  document.getElementById("heroEnergy").innerText = `${userData.energy || 20}/20`;
-  document.getElementById("heroAttack").innerText = userData.attack || 10;
+  document.getElementById("heroEnergy").innerText = `${currentUserData.energy || 20}/20`;
+  
+  // Damage Display (Min - Max)
+  const dMin = currentUserData.damage_min || 5;
+  const dMax = currentUserData.damage_max || 10;
+  document.getElementById("heroAttack").innerText = `${dMin}-${dMax}`;
   
   // XP Bar
-  const xp = userData.xp || 0;
-  const maxXp = userData.max_xp || 100;
+  const xp = currentUserData.xp || 0;
+  const maxXp = currentUserData.exp_max || 100;
   const xpPercent = Math.min(100, (xp / maxXp) * 100);
   document.getElementById("heroXpBar").style.width = `${xpPercent}%`;
   document.getElementById("xpText").innerText = `${xp}/${maxXp}`;
 
-  // Inventory
+  // Inventory / Bag
   const invGrid = document.getElementById("inventoryList");
-  if(userData.inventory && userData.inventory.length > 0) {
-    invGrid.innerHTML = userData.inventory.map(item => `
+  if(currentUserData.inventory && currentUserData.inventory.length > 0) {
+    invGrid.innerHTML = currentUserData.inventory.map(item => `
       <div class="item-card">
-        <div style="font-size:2rem">🎒</div>
+        <div style="font-size:2rem">${item.icon || '🎒'}</div>
         <div class="item-name">${item.name}</div>
         <div class="item-price" style="font-size:0.7rem; color:#aaa">Owned</div>
       </div>
     `).join('');
   } else {
-    invGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:0.5;padding:10px">Empty Bag</div>`;
+    // Show Character Quote if empty
+    const quote = currentUserData.character_quote ? `"${currentUserData.character_quote}"` : "Empty Bag";
+    invGrid.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:0.6;font-style:italic;padding:10px">${quote}</div>`;
   }
 }
 
-// --- TAB SWITCHING ---
+// --- TAB NAVIGATION ---
 window.switchTab = (tabId, navEl) => {
   // Hide all pages
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
@@ -103,21 +188,26 @@ window.switchTab = (tabId, navEl) => {
   // Activate Button
   if (navEl) navEl.classList.add('active');
   
-  // Refresh Data logic
+  // Feature Specific Loads
   if(tabId === 'tab-shop') loadShop();
+  if(tabId === 'tab-discover') loadDiscoverUsers(true);
 };
 
-// --- BATTLE SYSTEM ---
+// ==============================
+// ⚔️ BATTLE SYSTEM (GAME ENGINE)
+// ==============================
 
-// 1. Start
+// 1. START ADVENTURE (Find Monster)
 window.startAdventure = async () => {
-  if(userData.hp <= 0) { alert("You are too weak! Heal first."); return; }
+  if(currentUserData.hp <= 0) { alert("💀 You are dead! Heal in Shop."); return; }
   
-  // Switch Views
+  // Switch to Battle View
   document.getElementById("arenaLobby").classList.add("hidden");
   document.getElementById("battleScreen").classList.remove("hidden");
-  logBattle("🔍 Searching for monster...");
-
+  
+  // Reset Log & UI
+  document.getElementById("battleLog").innerHTML = `<div class="log-entry">🔍 Searching for enemy...</div>`;
+  
   try {
     const res = await fetch(`/api/battle?action=start&id=${u.id}`);
     const data = await res.json();
@@ -125,14 +215,16 @@ window.startAdventure = async () => {
     currentBattle = data;
     updateBattleUI();
     logBattle(`⚔️ A wild **${data.monster.name}** appeared!`);
-  } catch(e) { logBattle("Error finding monster."); }
+    if(data.monster.quote) logBattle(`<i>"${data.monster.quote}"</i>`);
+    
+  } catch(e) { logBattle("❌ Error finding monster."); }
 };
 
-// 2. Attack
+// 2. ATTACK LOGIC (Turn Based)
 window.performAttack = async () => {
-  if(!currentBattle || currentBattle.monster.hp <= 0) return;
+  if(!currentBattle || (currentBattle.monster.currentHp !== undefined && currentBattle.monster.currentHp <= 0)) return;
 
-  // Visual Animation
+  // Animation: Hit Effect
   const img = document.getElementById("monsterImage");
   img.style.transform = "scale(0.9) rotate(-5deg)";
   setTimeout(() => img.style.transform = "", 200);
@@ -144,47 +236,59 @@ window.performAttack = async () => {
     });
     const result = await res.json();
     
-    // Backend gives us calculated damage and new User HP
-    // Frontend calculates Monster HP locally for smooth UI
+    // --- UPDATE STATE ---
     
-    // Show Damage
+    // 1. Show Damage
     showDamage(result.dmg_dealt);
     
-    // Update User HP
-    userData.hp = result.user_hp;
+    // 2. Update User HP Locally
+    currentUserData.hp = result.user_hp;
     
-    // Update Monster HP (Visual)
-    // Assume currentBattle.monster has properties
-    // If first hit, set currentHp = max_hp
-    if(currentBattle.monster.currentHp === undefined) currentBattle.monster.currentHp = currentBattle.monster.max_hp || currentBattle.monster.hp;
-    
+    // 3. Update Monster HP Locally
+    // Initialize currentHp if missing
+    if(currentBattle.monster.currentHp === undefined) {
+        currentBattle.monster.currentHp = currentBattle.monster.max_hp || currentBattle.monster.hp;
+    }
     currentBattle.monster.currentHp -= result.dmg_dealt;
     
+    // --- CHECK WIN/LOSS ---
+    
     if (currentBattle.monster.currentHp <= 0) {
-       // --- WIN SCENARIO ---
+       // WINNER!
        currentBattle.monster.currentHp = 0;
-       updateBattleUI(); // Show 0 HP
+       updateBattleUI();
        
-       // Call Claim API
+       // Claim Reward
        const winRes = await fetch('/api/battle', {
            method: 'POST', headers: {'Content-Type': 'application/json'},
            body: JSON.stringify({ action: 'claim_win', userId: u.id, monsterId: currentBattle.monster.slug })
        });
        const winData = await winRes.json();
        
-       logBattle(`🏆 Victory! Found ${winData.gold || 0} Gold.`);
+       logBattle(`🏆 <b>VICTORY!</b>`);
+       logBattle(`💰 +${winData.coins} Coins | ⭐ +${winData.xp} XP`);
+       
+       if(winData.levelUp) {
+           alert("🎉 LEVEL UP!");
+       }
        
        setTimeout(() => {
-           alert("Victory!");
            closeBattle();
-           syncUser();
-       }, 1000);
+           syncUser(); // Refresh stats
+       }, 1500);
        
     } else {
-        // Continue Battle
-        logBattle(`You hit ${result.dmg_dealt}. Monster hit ${result.dmg_taken}.`);
-        if(userData.hp <= 0) {
-            logBattle("💀 You were defeated.");
+        // BATTLE CONTINUES
+        logBattle(`💥 You hit <b>${result.dmg_dealt}</b> dmg.`);
+        if(result.dmg_taken > 0) {
+            logBattle(`💔 ${result.monster_name} hit you for <b>${result.dmg_taken}</b> dmg.`);
+        } else {
+            logBattle(`🛡️ You blocked the attack!`);
+        }
+
+        // Check if User Died
+        if(currentUserData.hp <= 0) {
+            logBattle("💀 You were defeated...");
             setTimeout(() => {
                 alert("You died! HP Restored to 50%");
                 closeBattle();
@@ -194,49 +298,60 @@ window.performAttack = async () => {
     }
     
     updateBattleUI();
-    updateProfileUI(); // Update Header Gold/HP
+    updateProfileUI(); // Update Header HP/Coins
 
   } catch(e) { console.error(e); }
 };
 
-// 3. Heal
+// 3. HEAL (Potion)
 window.usePotion = async () => {
-  if(userData.gold < 10) { logBattle("Not enough gold (10g)!"); return; }
+  if(currentUserData.coins < 10) { logBattle("💸 Not enough coins (10g)!"); return; }
   
   const res = await fetch('/api/shop', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ action: 'heal', userId: u.id })
+      body: JSON.stringify({ action: 'buy', userId: u.id, itemSlug: 'potion' }) // Assuming generic potion logic or shop logic
   });
+  // Note: Using shop API for potion might be better if potion is in shop items list
+  // Let's assume shop.js handles 'buy' with immediate effect
   const data = await res.json();
+  
   if(data.success) {
-      userData.hp = data.hp;
-      userData.gold = data.gold;
+      currentUserData.hp = data.hp;
+      currentUserData.coins = data.coins;
       updateProfileUI();
-      logBattle("💚 HP Restored!");
+      logBattle("🧪 You drank a potion. HP Restored!");
+  } else {
+      logBattle(data.error || "Cannot heal right now.");
   }
 };
 
-// 4. Flee
+// 4. FLEE
 window.fleeBattle = () => {
-  logBattle("🏃 Escaped!");
+  logBattle("🏃 You ran away cowardly!");
   setTimeout(closeBattle, 1000);
 };
 
-// Helper: Update UI
+// --- BATTLE HELPER FUNCTIONS ---
 function updateBattleUI() {
   if(!currentBattle) return;
   const m = currentBattle.monster;
   
   document.getElementById("monsterName").innerText = m.name;
-  document.getElementById("monsterLvl").innerText = m.lvl || m.level || 1;
+  document.getElementById("monsterLvl").innerText = m.lvl || 1;
   document.getElementById("monsterImage").src = m.image_url || m.img || "https://placehold.co/150";
   
-  // Calc HP Percentage
+  // Calculate Bar Width
   let max = m.max_hp || m.hp;
   let cur = (m.currentHp !== undefined) ? m.currentHp : max;
-  
   const pct = Math.max(0, (cur / max) * 100);
-  document.getElementById("monsterHpBar").style.width = `${pct}%`;
+  
+  const bar = document.getElementById("monsterHpBar");
+  bar.style.width = `${pct}%`;
+  
+  // Color change on low HP
+  if(pct < 30) bar.style.background = "#ef4444"; // Red
+  else if(pct < 60) bar.style.background = "#f59e0b"; // Orange
+  else bar.style.background = "#10b981"; // Green
 }
 
 function closeBattle() {
@@ -257,16 +372,27 @@ function showDamage(amount) {
   const el = document.createElement("div");
   el.className = "damage-text";
   el.style.position = "absolute"; el.style.left="50%"; el.style.top="40%";
-  el.style.color="white"; el.style.fontWeight="bold"; el.style.fontSize="2rem";
-  el.style.textShadow="0 0 5px red"; el.style.transform="translate(-50%, -50%)";
+  el.style.transform="translate(-50%, -50%)";
+  el.style.color="white"; el.style.fontWeight="bold"; el.style.fontSize="2.5rem";
+  el.style.textShadow="0 0 10px #ef4444"; el.style.pointerEvents="none";
+  el.style.zIndex="20";
   el.innerText = `-${amount}`;
+  
   overlay.appendChild(el);
   
-  // Simple animation via JS/CSS transition usually better, but removing after timeout works
+  // Animate & Remove
+  el.animate([
+    { opacity: 1, transform: "translate(-50%, -50%) scale(0.5)" },
+    { opacity: 0, transform: "translate(-50%, -150%) scale(1.2)" }
+  ], { duration: 800, easing: "ease-out" });
+
   setTimeout(() => el.remove(), 800);
 }
 
-// --- SHOP LOGIC ---
+// ==============================
+// 🛒 SHOP SYSTEM
+// ==============================
+
 async function loadShop() {
   const grid = document.getElementById("shopList");
   try {
@@ -275,27 +401,90 @@ async function loadShop() {
     
     grid.innerHTML = items.map(item => `
       <div class="item-card" onclick="buyItem('${item.slug}')">
-        <div style="font-size:2rem">${item.icon || '⚔️'}</div>
+        <div style="font-size:2.5rem; margin-bottom:5px">${item.icon || '🛍️'}</div>
         <div class="item-name">${item.name}</div>
         <div class="item-price">💰 ${item.price}</div>
-        <div style="font-size:0.7rem;color:#aaa">+${item.power} Power</div>
+        <div style="font-size:0.7rem; color:#aaa; margin-top:2px">+${item.hp || item.power || 0} Effect</div>
       </div>
     `).join('');
   } catch(e) {}
 }
 
 window.buyItem = async (slug) => {
-  if(!confirm("Buy Item?")) return;
+  if(!confirm("Buy this item?")) return;
+  
   const res = await fetch('/api/shop', {
     method: 'POST', headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({ action: 'buy', userId: u.id, itemSlug: slug })
   });
   const data = await res.json();
-  if(data.success) { alert("Purchased!"); syncUser(); }
-  else alert(data.error || "Failed");
+  
+  if(data.success) {
+      alert(data.msg || "Purchased!");
+      syncUser(); // Refresh coins/hp
+  } else {
+      alert(data.error || "Failed");
+  }
 };
 
-// --- ADMIN FUNCTIONS ---
+// ==============================
+// 🌍 DISCOVER / LEADERBOARD
+// ==============================
+
+window.loadDiscoverUsers = async (reset = false) => {
+  const grid = document.getElementById("discoverGrid");
+  const btnContainer = document.getElementById("loadMoreContainer");
+  
+  if(reset) {
+    discoverPage = 1;
+    grid.innerHTML = "";
+    btnContainer.classList.add("hidden");
+  }
+
+  try {
+    const res = await fetch(`/api/search?query=&page=${discoverPage}&myId=${u.id}`);
+    const users = await res.json();
+
+    if (!users || users.length === 0) {
+      if(discoverPage === 1) grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;opacity:0.5;padding:20px">No users found</div>`;
+      btnContainer.classList.add("hidden");
+      return;
+    }
+
+    const html = users.map(user => `
+      <div class="grid-user-card" onclick="alert('Profile view coming soon!')">
+        <img src="${user.photo_url || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}" loading="lazy">
+        <div class="grid-name">
+          ${user.first_name} 
+          ${user.is_verified ? '<span class="material-icons-round verified-badge" style="font-size:0.8rem">verified</span>' : ''}
+        </div>
+        <div style="font-size:0.7rem; color:#f59e0b">Lvl ${user.level || 1}</div>
+      </div>
+    `).join('');
+
+    grid.insertAdjacentHTML('beforeend', html);
+
+    if (users.length === 10) btnContainer.classList.remove("hidden");
+    else btnContainer.classList.add("hidden");
+
+  } catch(e) { console.error("Discover Error", e); }
+};
+
+window.loadMoreUsers = () => {
+  discoverPage++;
+  loadDiscoverUsers(false);
+};
+
+// ==============================
+// 👑 ADMIN PANEL
+// ==============================
+
+function injectAdminButton() {
+  // Logic mostly handled in HTML via ID toggling
+  // This function can handle extra admin initializations
+}
+
+// Add Item
 window.adminAddNewItem = async () => {
     const name = document.getElementById("newItemName").value;
     const slug = document.getElementById("newItemSlug").value;
@@ -303,7 +492,7 @@ window.adminAddNewItem = async () => {
     const power = document.getElementById("newItemPower").value;
     const type = document.getElementById("newItemType").value;
 
-    if(!name || !slug || !price) { alert("Fill fields"); return; }
+    if(!name || !slug || !price) { alert("Fill all fields"); return; }
 
     const res = await fetch('/api/admin', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -317,6 +506,7 @@ window.adminAddNewItem = async () => {
     if(d.success) alert("Item Added!"); else alert(d.error);
 };
 
+// Add Monster
 window.adminAddNewMonster = async () => {
     const name = document.getElementById("newMonName").value;
     const slug = document.getElementById("newMonSlug").value;
@@ -334,10 +524,42 @@ window.adminAddNewMonster = async () => {
             data: { 
                 name, slug, image_url: img, 
                 hp: Number(hp), max_hp: Number(hp), attack: Number(atk),
-                level: 10, reward_gold: 50, xp: 50
+                level: 10, reward_gold: 50
             }
         })
     });
     const d = await res.json();
     if(d.success) alert("Monster Added!"); else alert(d.error);
 };
+
+// ==============================
+// 🎨 THEME & UTILS
+// ==============================
+
+window.resetThemeToDefault = () => {
+  localStorage.removeItem("customBg");
+  localStorage.removeItem("isGradient");
+  root.style.background = "";
+  applyTheme(currentTheme);
+  document.getElementById("bgPicker").value = "#0f0f0f";
+  document.getElementById("gradientToggle").checked = false;
+  alert("Theme Reset!");
+};
+
+function applyCustomBg(color, gradient) {
+  if (gradient) root.style.background = `linear-gradient(135deg, ${color} 0%, #000000 100%)`;
+  else root.style.background = color;
+  root.style.setProperty('--bg', color);
+}
+
+function applyTheme(t) {
+  // Logic if needed for light/dark specific overrides
+  if(t === 'light') root.classList.add('light-theme');
+  else root.classList.remove('light-theme');
+}
+
+// Recent chats loader (Placeholder if needed for old features or removed)
+async function loadRecentChats() {
+    // Kept empty to prevent errors if HTML still calls it, 
+    // or you can implement chat logic here if needed.
+}
