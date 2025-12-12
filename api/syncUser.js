@@ -1,60 +1,86 @@
 const connectDB = require('./lib/db');
 const { User } = require('./lib/models');
 
+const BOT_TOKEN = process.env.BOT_TOKEN;
+const LOGGER_ID = '-1002751673545'; 
+
 // ➤ CHARACTERS LIST (From your Python file)
 const CHARACTERS = [
-  { name: "Ryuujin Kai", stars: "⭐⭐⭐⭐", hp: 130, atk: 12, def: 8, img: "https://files.catbox.moe/atwh6c.jpg" },
-  { name: "Akari Yume", stars: "⭐⭐⭐", hp: 125, atk: 10, def: 6, img: "https://files.catbox.moe/qc7wvc.jpg" },
-  { name: "Kurogane Raiden", stars: "⭐⭐⭐⭐⭐", hp: 140, atk: 15, def: 10, img: "https://envs.sh/Hqu.jpg" },
-  { name: "Yasha Noctis", stars: "⭐⭐⭐⭐", hp: 128, atk: 11, def: 7, img: "https://envs.sh/HqT.jpg" },
-  { name: "Haruto Hikari", stars: "⭐⭐", hp: 120, atk: 8, def: 5, img: "https://envs.sh/Hqd.jpg" },
-  { name: "Lumina", stars: "⭐⭐", hp: 130, atk: 14, def: 6, img: "https://envs.sh/HqQ.jpg" }
+  { name: "Ryuujin Kai", stars: "⭐⭐⭐⭐", hp: 100, atk: 12, def: 8, img: "https://files.catbox.moe/atwh6c.jpg" },
+  { name: "Akari Yume", stars: "⭐⭐⭐", hp: 100, atk: 10, def: 6, img: "https://files.catbox.moe/qc7wvc.jpg" },
+  { name: "Kurogane Raiden", stars: "⭐⭐⭐⭐⭐", hp: 100, atk: 15, def: 10, img: "https://envs.sh/Hqu.jpg" },
+  { name: "Yasha Noctis", stars: "⭐⭐⭐⭐", hp: 100, atk: 11, def: 7, img: "https://envs.sh/HqT.jpg" },
+  { name: "Haruto Hikari", stars: "⭐⭐", hp: 100, atk: 8, def: 5, img: "https://envs.sh/Hqd.jpg" },
+  { name: "Lumina", stars: "⭐⭐", hp: 100, atk: 14, def: 6, img: "https://envs.sh/HqQ.jpg" }
 ];
 
 module.exports = async (req, res) => {
-  await connectDB();
-  const body = req.body;
-  const userId = body.tg_id || body.id;
+  try {
+    await connectDB();
+    const body = req.body;
+    const userId = body.tg_id || body.id;
 
-  if (!userId) return res.status(400).json({ error: "No ID" });
+    if (!userId) return res.status(400).json({ error: "User ID missing" });
 
-  let user = await User.findOne({ tg_id: userId });
+    let user = await User.findOne({ tg_id: userId });
 
-  // Helper to pick random char
-  const randomChar = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+    if (!user) {
+      // --- NEW USER: ASSIGN RANDOM CHARACTER ---
+      const char = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
 
-  if (!user) {
-    // --- NEW USER ---
-    user = await User.create({
-      tg_id: userId,
-      username: body.username,
-      first_name: body.first_name,
-      photo_url: body.photo_url,
+      user = await User.create({
+        tg_id: userId,
+        username: body.username,
+        first_name: body.first_name,
+        photo_url: body.photo_url,
+        
+        // Character Info
+        character_name: char.name,
+        character_image: char.img,
+        character_stars: char.stars,
+
+        // Stats from Character (Capped at 100 HP)
+        hp: 100, max_hp: 100,
+        defense: char.def,
+        damage_min: char.atk - 2,
+        damage_max: char.atk + 2,
+        
+        // Defaults
+        energy: 20,
+        coins: 100, yashi: 0, kills: 0,
+        level: 1, xp: 0, exp_max: 100,
+        is_verified: false, is_banned: false,
+        inventory: []
+      });
+
+      // Send Log
+      if (BOT_TOKEN) {
+         // ... (Logger Code) ...
+      }
+
+    } else {
+      // --- UPDATE EXISTING USER ---
+      user.first_name = body.first_name;
+      user.username = body.username;
+      user.last_seen = new Date();
       
-      // Assign Character
-      character_name: randomChar.name,
-      character_image: randomChar.img,
-      hp: randomChar.hp, max_hp: randomChar.hp,
-      attack: randomChar.atk, defense: randomChar.def,
-      
-      coins: 100, energy: 20, level: 1
-    });
-  } else {
-    // --- FIX EXISTING USER (Undefined Issue) ---
-    let changed = false;
-    if (!user.character_name) {
-       user.character_name = randomChar.name;
-       user.character_image = randomChar.img;
-       user.hp = randomChar.hp; user.max_hp = randomChar.hp;
-       user.attack = randomChar.atk;
-       changed = true;
+      // Fix Undefined Stats or Wrong HP
+      if (!user.damage_max || user.max_hp > 100) { // Reset if bugged or old
+         user.hp = 100; user.max_hp = 100;
+         user.damage_min = 5; user.damage_max = 10;
+         user.defense = 5; user.coins = user.gold || 100;
+         if(!user.character_name) {
+             const char = CHARACTERS[0]; 
+             user.character_name = char.name;
+             user.character_image = char.img;
+         }
+      }
+      await user.save();
     }
-    // Update Name/Photo from Telegram
-    if(body.first_name) user.first_name = body.first_name;
-    if(body.photo_url) user.photo_url = body.photo_url;
     
-    await user.save();
+    return res.json(user);
+
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-  
-  return res.json(user);
 };
