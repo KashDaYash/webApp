@@ -9,7 +9,7 @@ const OWNER_ID = 1302298741;
 let userData = null;
 let currentBattle = null;
 
-// --- INIT ---
+// --- INITIALIZATION ---
 window.onload = () => {
   const gate = document.getElementById("loginGate");
   const app = document.getElementById("app");
@@ -22,15 +22,17 @@ window.onload = () => {
     return;
   }
 
+  // Show App
   if(gate) gate.classList.add("hidden");
   if(app) app.classList.remove("hidden");
   document.getElementById("bottomNav").classList.remove("hidden");
 
+  // Initial Sync
   syncUser();
   setTimeout(() => { if(loader) loader.style.display = "none"; }, 500);
 };
 
-// --- SYNC ---
+// --- SYNC USER DATA ---
 async function syncUser() {
   try {
     const res = await fetch('/api/syncUser', { 
@@ -38,13 +40,13 @@ async function syncUser() {
     });
     userData = await res.json();
     
-    // Admin Check
+    // Check Admin Permission for Nav Button
     if (userData.tg_id === OWNER_ID || userData.is_admin) {
         document.getElementById("navAdminBtn").style.display = "flex";
     }
 
     updateProfileUI();
-    loadShop(); 
+    loadShop(); // Load items
   } catch(e) { console.error("Sync Failed", e); }
 }
 
@@ -52,14 +54,17 @@ async function syncUser() {
 function updateProfileUI() {
   if(!userData) return;
   
+  // Header
   document.getElementById("userGold").innerText = userData.coins || 0;
   document.getElementById("heroName").innerText = userData.first_name;
   
+  // Character Info
   const charName = userData.character_name || "Novice";
-  document.getElementById("heroCharName").innerText = `${charName}`;
+  document.getElementById("heroCharName").innerText = `${charName} (Lvl ${userData.level || 1})`;
   const charImg = userData.character_image || userData.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   document.getElementById("profileAvatar").src = charImg;
 
+  // Stats
   const maxHp = userData.max_hp || 100;
   const currentHp = userData.hp !== undefined ? userData.hp : maxHp;
   document.getElementById("heroHp").innerText = `${currentHp}/${maxHp}`;
@@ -69,17 +74,19 @@ function updateProfileUI() {
   const maxDmg = userData.damage_max || 10;
   document.getElementById("heroAttack").innerText = `${minDmg}-${maxDmg}`;
   
+  // XP Bar
   const xp = userData.xp || 0;
   const maxXp = userData.max_xp || userData.exp_max || 100;
   const xpPercent = Math.min(100, (xp / maxXp) * 100);
   document.getElementById("heroXpBar").style.width = `${xpPercent}%`;
   document.getElementById("xpText").innerText = `${xp}/${maxXp}`;
 
+  // Inventory
   const invGrid = document.getElementById("inventoryList");
   if(userData.inventory && userData.inventory.length > 0) {
     invGrid.innerHTML = userData.inventory.map(item => `
       <div class="item-card">
-        <div style="font-size:2rem">🎒</div>
+        <div style="font-size:2rem">${item.icon || '🎒'}</div>
         <div class="item-name">${item.name}</div>
         <div class="item-price" style="font-size:0.7rem; color:#aaa">Owned</div>
       </div>
@@ -89,7 +96,7 @@ function updateProfileUI() {
   }
 }
 
-// --- NAV ---
+// --- TAB SWITCHING ---
 window.switchTab = (tabId, navEl) => {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -140,20 +147,23 @@ async function loadLeaderboard() {
   } catch(e) { list.innerHTML = "Error loading."; }
 }
 
-// --- HUNT & BATTLE ---
-window.startHuntMode = async () => {
+// --- BATTLE SYSTEM ---
+
+// 1. Start (Show Search Mode)
+window.startAdventure = async () => {
   if(userData.hp <= 0) { alert("You are dead! Heal first."); return; }
   
   document.getElementById("arenaLobby").classList.add("hidden");
   document.getElementById("battleScreen").classList.remove("hidden");
   
-  // Controls Logic
+  // Show Hunt buttons, Hide Fight buttons
   document.getElementById("huntControls").classList.remove("hidden");
   document.getElementById("fightControls").classList.add("hidden");
   
   searchNextMonster();
 };
 
+// 2. Search
 window.searchNextMonster = async () => {
   const log = document.getElementById("battleLog");
   log.innerHTML = `<div class="log-entry">🔍 Searching for monster...</div>`;
@@ -172,12 +182,14 @@ window.searchNextMonster = async () => {
   } catch(e) { log.innerHTML = "Error finding monster."; }
 };
 
+// 3. Begin Fight
 window.beginFight = () => {
   document.getElementById("huntControls").classList.add("hidden");
   document.getElementById("fightControls").classList.remove("hidden");
   logBattle(`⚔️ Battle Started with ${currentBattle.monster.name}!`);
 };
 
+// 4. Combat Logic
 window.combatAction = async (type) => {
   if(!currentBattle || currentBattle.currentMonsterHp <= 0) return;
 
@@ -223,6 +235,7 @@ window.combatAction = async (type) => {
     } else if (result.outcome === 'fled') {
         closeBattle();
     }
+    
     updateProfileUI();
 
   } catch(e) { console.error(e); }
@@ -280,7 +293,7 @@ window.buyItem = async (slug) => {
   else alert(data.error);
 };
 
-// --- ADMIN INPUT CLEAR ---
+// --- ADMIN ---
 window.adminAddItem = async () => {
     const nameEl = document.getElementById("admItemName");
     const slugEl = document.getElementById("admItemSlug");
@@ -298,6 +311,7 @@ window.adminAddItem = async () => {
         })
     });
     alert("Item Added!");
+    // Clear Inputs
     nameEl.value = ""; slugEl.value = ""; priceEl.value = ""; powerEl.value = "";
     loadShop();
 };
@@ -323,5 +337,34 @@ window.adminAddMonster = async () => {
         })
     });
     alert("Monster Added!");
+    // Clear Inputs
     nameEl.value = ""; slugEl.value = ""; imgEl.value = ""; hpEl.value = ""; atkEl.value = "";
+};
+
+window.adminBuffUser = async () => {
+    const targetId = document.getElementById("admTargetId").value;
+    const stat = document.getElementById("admBuffType").value;
+    const amount = document.getElementById("admBuffAmt").value;
+
+    if(!targetId) return alert("Enter User ID");
+
+    const res = await fetch('/api/shop', { 
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ 
+            action: 'admin_buff', 
+            userId: u.id, // Auth
+            targetId: targetId, 
+            stat: stat, 
+            amount: Number(amount) || 0 
+        })
+    });
+    const d = await res.json();
+    if(d.success) alert(d.msg); else alert(d.error);
+    
+    // Input Clean
+    document.getElementById("admTargetId").value = "";
+    document.getElementById("admBuffAmt").value = "";
+    
+    // Refresh self if needed
+    if(targetId == u.id) syncUser();
 };
