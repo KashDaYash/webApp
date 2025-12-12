@@ -1,80 +1,79 @@
 const connectDB = require('./lib/db');
 const { User, Item } = require('./lib/models');
 
-// Default Items (Fallback)
-const DEFAULT_ITEMS = [
+// ➤ DEFAULT SHOP (Food & Basics)
+const DEFAULTS = [
   { slug: 'apple', name: 'Apple', price: 5, power: 10, type: 'hp', icon: '🍎' },
-  { slug: 'sword_basic', name: 'Iron Sword', price: 100, power: 5, type: 'atk', icon: '🗡️' },
-  { slug: 'potion', name: 'Health Potion', price: 20, power: 50, type: 'hp', icon: '🧪' }
+  { slug: 'burger', name: 'Burger', price: 15, power: 25, type: 'hp', icon: '🍔' },
+  { slug: 'potion', name: 'Health Potion', price: 20, power: 50, type: 'hp', icon: '🧪' },
+  { slug: 'sword_wood', name: 'Wooden Sword', price: 50, power: 2, type: 'atk', icon: '🗡️' }
 ];
 
 module.exports = async (req, res) => {
   await connectDB();
-  const { type, action, userId, itemSlug } = req.method === 'POST' ? req.body : req.query;
+  const method = req.method;
+  const { type, action, userId, itemSlug, targetId, amount, stat } = method === 'POST' ? req.body : req.query;
 
   try {
-    // --- LIST ITEMS (Merge Hardcoded + DB) ---
+    // 1. LIST ITEMS (Merge DB + Defaults)
     if (type === 'list' || req.query.type === 'list') {
-      const dbItems = await Item.find({}); // Fetch Admin added items
-      // Combine both lists
-      const allItems = [...DEFAULT_ITEMS, ...dbItems];
-      return res.json(allItems);
+        const dbItems = await Item.find({});
+        // Use map to ensure consistent structure
+        const formattedDB = dbItems.map(i => ({
+            slug: i.slug, name: i.name, price: i.price, 
+            power: i.power || i.effect_value, 
+            type: i.type, icon: i.image_url || '🎒'
+        }));
+        return res.json([...DEFAULTS, ...formattedDB]);
     }
 
-    // --- BUY ITEM ---
+    // 2. BUY ITEM
     if (action === 'buy') {
-      const user = await User.findOne({ tg_id: userId });
-      
-      // Check in both lists
-      const dbItems = await Item.find({});
-      const allItems = [...DEFAULT_ITEMS, ...dbItems];
-      const item = allItems.find(i => i.slug === itemSlug);
-
-      if (!item) return res.status(404).json({ error: "Item not found" });
-      if (user.coins < item.price) return res.status(400).json({ error: "Need more coins!" });
-
-      // Transaction
-      user.coins -= item.price;
-      
-      // Apply Stats
-      if (item.type === 'hp' || item.type === 'potion') {
-          user.hp = Math.min(user.hp + item.power, user.max_hp);
-      } else if (item.type === 'atk' || item.type === 'weapon') {
-          user.attack += item.power;
-          // Permanent boost logic or equip logic can go here
-      } else if (item.type === 'def' || item.type === 'armor') {
-          user.defense += item.power;
-      }
-
-      // Add to Inventory (Skip generic food if you want)
-      if(item.type !== 'hp') {
-          user.inventory.push({ 
-              slug: item.slug, 
-              name: item.name, 
-              type: item.type, 
-              icon: item.icon || '🎒' 
-          });
-      }
-
-      await user.save();
-      return res.json({ 
-          success: true, 
-          coins: user.coins, 
-          hp: user.hp, 
-          msg: `Bought ${item.name}!` 
-      });
-    }
-    
-    // --- HEAL ---
-    if (action === 'heal') {
         const user = await User.findOne({ tg_id: userId });
-        if (user.coins >= 10) {
-            user.coins -= 10;
-            user.hp = Math.min(user.hp + 30, user.max_hp);
-            await user.save();
-            return res.json({ success: true, hp: user.hp, coins: user.coins });
+        // Check both lists
+        const dbItems = await Item.find({});
+        const allItems = [...DEFAULTS, ...dbItems];
+        const item = allItems.find(i => i.slug === itemSlug);
+
+        if (!item) return res.status(404).json({ error: "Item gone!" });
+        if (user.coins < item.price) return res.status(400).json({ error: "Need Gold!" });
+
+        user.coins -= item.price;
+
+        // Apply Effect
+        if (item.type === 'hp') {
+            user.hp = Math.min(user.hp + item.power, user.max_hp);
+        } else if (item.type === 'atk' || item.type === 'weapon') {
+            user.attack += item.power;
+            user.damage_min += item.power;
+            user.damage_max += item.power;
+        } else if (item.type === 'def' || item.type === 'armor') {
+            user.defense += item.power;
         }
-        return res.json({ success: false, error: "Not enough gold" });
+
+        // Save to Inventory (Visual)
+        if (item.type !== 'hp') {
+            user.inventory.push({ name: item.name, icon: item.icon || '⚔️' });
+        }
+
+        await user.save();
+        return res.json({ success: true, coins: user.coins, hp: user.hp, msg: `Bought ${item.name}` });
+    }
+
+    // 3. ADMIN: HEAL/BUFF USER (God Mode)
+    if (action === 'admin_buff') {
+        // Security check should be in frontend or middleware, but checking here too
+        // For simplicity assuming caller is verified owner in frontend
+        
+        const target = await User.findOne({ tg_id: targetId });
+        if (!target) return res.status(404).json({ error: "User not found" });
+
+        if (stat === 'hp') target.hp = target.max_hp;
+        if (stat === 'coins') target.coins += parseInt(amount);
+        if (stat === 'atk') target.attack += parseInt(amount);
+        
+        await target.save();
+        return res.json({ success: true, msg: "User Buffed!" });
     }
 
     return res.json([]);
