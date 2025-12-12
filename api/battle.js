@@ -1,111 +1,154 @@
 const connectDB = require('./lib/db');
-const { User } = require('./lib/models');
+const { User, Monster } = require('./lib/models');
 
-// ➤ MONSTERS (From your Python file + Images)
-const MONSTERS = [
-  { slug: 'goblin', name: 'Sneaky Goblin', hp: 30, atk: 5, coins: 10, img: 'https://cdn-icons-png.flaticon.com/512/3062/3062634.png' },
-  { slug: 'wolf', name: 'Dire Wolf', hp: 50, atk: 8, coins: 20, img: 'https://cdn-icons-png.flaticon.com/512/616/616554.png' },
-  { slug: 'floraxa', name: 'Floraxa', hp: 155, atk: 15, coins: 140, img: 'https://files.catbox.moe/msdb4a.jpg' },
-  { slug: 'drakor', name: 'Drakor', hp: 145, atk: 12, coins: 100, img: 'https://files.catbox.moe/yjqp8n.jpg' },
-  { slug: 'glacier', name: 'Glacier', hp: 138, atk: 10, coins: 90, img: 'https://envs.sh/HqE.jpg' },
-  { slug: 'grudor', name: 'Grudor', hp: 150, atk: 9, coins: 110, img: 'https://files.catbox.moe/5xprol.jpg' },
-  { slug: 'zarnok', name: 'Zarnok', hp: 135, atk: 13, coins: 120, img: 'https://files.catbox.moe/avzr6a.jpg' },
-  { slug: 'venmora', name: 'Venmora', hp: 136, atk: 11, coins: 100, img: 'https://files.catbox.moe/2gjal5.jpg' },
-  { slug: 'abyzoth', name: 'Abyzoth', hp: 148, atk: 14, coins: 130, img: 'https://files.catbox.moe/xdwbyu.jpg' },
-  { slug: 'voltrix', name: 'Voltrix', hp: 137, atk: 10, coins: 95, img: 'https://envs.sh/HC_.jpg' },
-  { slug: 'nimbrax', name: 'Nimbrax', hp: 155, atk: 15, coins: 140, img: 'https://files.catbox.moe/pxe6dd.jpg' }
+// ➤ MONSTERS LIST (Fixed Images)
+const ENEMIES = [
+  // --- Small Mobs ---
+  { 
+    slug: 'goblin', name: 'Sneaky Goblin', hp: 30, atk: [3, 5], coins: 10, 
+    img: 'https://cdn-icons-png.flaticon.com/512/3062/3062634.png' 
+  },
+  { 
+    slug: 'wolf', name: 'Dire Wolf', hp: 50, atk: [5, 8], coins: 20, 
+    img: 'https://cdn-icons-png.flaticon.com/512/616/616554.png' 
+  },
+
+  // --- BOSSES (Your Links) ---
+  { 
+    slug: 'silicox', name: 'Silicox', hp: 140, atk: [9, 12], coins: 105, 
+    img: 'https://files.catbox.moe/rnad1x.jpg' 
+  },
+  { 
+    slug: 'drakor', name: 'Drakor', hp: 150, atk: [10, 13], coins: 110, 
+    img: 'https://files.catbox.moe/yjqp8n.jpg' 
+  },
+  { 
+    slug: 'grudor', name: 'Grudor', hp: 160, atk: [7, 10], coins: 115, 
+    img: 'https://files.catbox.moe/5xprol.jpg' 
+  },
+  { 
+    slug: 'zarnok', name: 'Zarnok', hp: 135, atk: [11, 14], coins: 120, 
+    img: 'https://files.catbox.moe/avzr6a.jpg' 
+  },
+  { 
+    slug: 'venmora', name: 'Venmora', hp: 136, atk: [10, 13], coins: 100, 
+    img: 'https://files.catbox.moe/2gjal5.jpg' 
+  },
+  { 
+    slug: 'abyzoth', name: 'Abyzoth', hp: 148, atk: [12, 15], coins: 130, 
+    img: 'https://files.catbox.moe/xdwbyu.jpg' 
+  },
+  { 
+    slug: 'floraxa', name: 'Floraxa', hp: 155, atk: [13, 16], coins: 140, 
+    img: 'https://files.catbox.moe/msdb4a.jpg' 
+  },
+  { 
+    slug: 'nimbrax', name: 'Nimbrax', hp: 155, atk: [13, 16], coins: 140, 
+    img: 'https://files.catbox.moe/pxe6dd.jpg' 
+  }
 ];
+
+// Helper: Random Integer
+const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 module.exports = async (req, res) => {
   await connectDB();
-  const { action, userId, monsterId } = req.body;
-
-  // 1. START BATTLE
-  if (req.method === 'GET' || action === 'start') {
-    // Return a random monster
-    const random = MONSTERS[Math.floor(Math.random() * MONSTERS.length)];
-    return res.json({ monster: random });
-  }
-
-  // 2. BATTLE ACTIONS
-  const user = await User.findOne({ tg_id: userId });
-  const monster = MONSTERS.find(m => m.slug === monsterId) || MONSTERS[0];
-
-  if (!user) return res.status(404).json({ error: "User not found" });
-
-  let dmgDealt = 0;
-  let dmgTaken = 0;
-  let msg = "";
-  let outcome = "continue"; // continue, win, loss, fled
-
-  // --- ATTACK ---
-  if (action === 'attack') {
-    dmgDealt = Math.floor(user.attack * (1 + Math.random() * 0.2));
-    dmgTaken = Math.max(1, monster.atk - (user.defense * 0.2));
-    msg = `You hit for ${dmgDealt}. It hit back for ${dmgTaken.toFixed(0)}.`;
-  }
   
-  // --- DODGE (Chance to take 0 dmg) ---
-  else if (action === 'dodge') {
-    const chance = Math.random();
-    if (chance > 0.5) { // 50% chance
-      dmgDealt = Math.floor(user.attack * 0.5); // Counter attack
-      dmgTaken = 0;
-      msg = `Dodged! You countered for ${dmgDealt}.`;
-    } else {
-      dmgDealt = 0;
-      dmgTaken = monster.atk; // Full damage
-      msg = `Dodge failed! You took ${dmgTaken} dmg.`;
+  // Handle both POST and GET properly
+  const method = req.method;
+  const body = method === 'POST' ? req.body : req.query;
+  const { action, id, userId, monsterId } = body;
+
+  try {
+    // --- 1. START BATTLE (GET/POST) ---
+    if (action === 'start' || (method === 'GET' && action === 'start')) {
+      const targetId = id || userId;
+      if(!targetId) return res.status(400).json({ error: "No User ID" });
+
+      const user = await User.findOne({ tg_id: targetId });
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      // Pick Random Monster
+      const enemy = ENEMIES[Math.floor(Math.random() * ENEMIES.length)];
+
+      // Send cleanly structured data
+      return res.json({ 
+          monster: {
+              slug: enemy.slug,
+              name: enemy.name,
+              hp: enemy.hp,
+              max_hp: enemy.hp,
+              img: enemy.img, // Image URL is vital here
+              image_url: enemy.img 
+          } 
+      });
     }
-  }
 
-  // --- HEAL ---
-  else if (action === 'heal') {
-    if (user.coins >= 10) {
-      user.coins -= 10;
-      const healAmount = 30;
-      user.hp = Math.min(user.hp + healAmount, user.max_hp);
-      dmgTaken = Math.floor(monster.atk * 0.5); // Still take some dmg
-      msg = `Healed ${healAmount} HP (-10g). Took ${dmgTaken} dmg.`;
-    } else {
-      msg = "Not enough coins to heal!";
-      dmgTaken = monster.atk;
+    // --- 2. ATTACK ---
+    if (action === 'attack') {
+      const user = await User.findOne({ tg_id: userId });
+      const enemy = ENEMIES.find(m => m.slug === monsterId) || ENEMIES[0];
+
+      // Player Dmg
+      const pMin = user.damage_min || 5;
+      const pMax = user.damage_max || 10;
+      const playerDmg = rand(pMin, pMax);
+
+      // Enemy Dmg
+      const eMin = enemy.atk[0];
+      const eMax = enemy.atk[1];
+      let enemyDmg = rand(eMin, eMax);
+
+      // Defense
+      const def = user.defense || 0;
+      enemyDmg = Math.max(1, Math.floor(enemyDmg - (def / 10)));
+
+      user.hp -= enemyDmg;
+      if (user.hp < 0) user.hp = 0;
+      await user.save();
+
+      return res.json({
+        dmg_dealt: playerDmg,
+        dmg_taken: enemyDmg,
+        user_hp: user.hp,
+        user_coins: user.coins,
+        monster_name: enemy.name,
+        reward_coins: enemy.coins,
+        msg: `You hit ${playerDmg}. It hit ${enemyDmg}.`
+      });
     }
-  }
-
-  // --- FLEE ---
-  else if (action === 'flee') {
-    // 50% chance to flee
-    if (Math.random() > 0.5) {
-      outcome = "fled";
-      msg = "You ran away safely!";
-    } else {
-      dmgTaken = Math.floor(monster.atk * 1.5); // Backstab damage
-      msg = `Failed to run! Took ${dmgTaken} dmg.`;
+    
+    // --- 3. CLAIM WIN ---
+    if (action === 'claim_win') {
+        const user = await User.findOne({ tg_id: userId });
+        const enemy = ENEMIES.find(m => m.slug === monsterId);
+        
+        if(user && enemy) {
+            const xpGain = rand(10, 20);
+            const coinsGain = enemy.coins;
+            
+            user.coins += coinsGain;
+            user.xp += xpGain;
+            
+            // Level Up
+            let levelUp = false;
+            if (user.xp >= user.exp_max) {
+                user.level += 1;
+                user.xp = 0;
+                user.exp_max = Math.floor(user.exp_max * 1.3);
+                user.max_hp += 10;
+                user.hp = user.max_hp;
+                levelUp = true;
+            }
+            await user.save();
+            return res.json({ success: true, coins: coinsGain, xp: xpGain, levelUp: levelUp });
+        }
     }
+
+    return res.json({ error: "Unknown action" });
+
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: e.message });
   }
-
-  // Apply Changes
-  if (outcome !== 'fled') {
-    user.hp -= parseInt(dmgTaken);
-    if (user.hp <= 0) {
-      user.hp = 0;
-      outcome = "loss";
-      msg = "You were defeated...";
-    }
-  }
-
-  await user.save();
-
-  // Return turn data
-  return res.json({
-    user_hp: user.hp,
-    user_coins: user.coins,
-    dmg_dealt: dmgDealt,
-    dmg_taken: dmgTaken,
-    msg: msg,
-    outcome: outcome,
-    monster_max: monster.hp, // For visual bar calculation
-    reward_coins: monster.coins
-  });
 };
