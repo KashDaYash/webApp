@@ -18,8 +18,8 @@
     <div class="gate-content">
       <div class="gate-icon">⚔️</div>
       <h1>Enter the Arena</h1>
-      <p>Play the ultimate RPG inside Telegram.</p>
-      <a href="https://t.me/YOUR_BOT_USERNAME/app" class="gate-btn">Open Game</a>
+      <p>The ultimate RPG experience.</p>
+      <a href="javascript:void(0)" onclick="location.reload()" class="gate-btn">Start Game</a>
     </div>
   </div>
 
@@ -35,26 +35,17 @@
         <div class="mode-card" onclick="startAdventure()">
           <div class="mode-icon">🌲</div>
           <div class="mode-info">
-            <h3>Adventure</h3>
+            <h3>Adventure (PvE)</h3>
             <p>Hunt monsters & gain XP</p>
           </div>
           <span class="material-icons-round">chevron_right</span>
         </div>
 
-        <div class="mode-card locked" onclick="alert('PvP Arena Coming Soon!')">
+        <div class="mode-card locked" onclick="alert('Coming Soon!')">
           <div class="mode-icon">⚔️</div>
           <div class="mode-info">
             <h3>PvP Arena</h3>
             <p>Duel other players</p>
-          </div>
-          <span class="material-icons-round">lock</span>
-        </div>
-        
-        <div class="mode-card locked" onclick="alert('Boss Raid Coming Soon!')">
-          <div class="mode-icon">🐲</div>
-          <div class="mode-info">
-            <h3>Boss Raid</h3>
-            <p>Team up against Titans</p>
           </div>
           <span class="material-icons-round">lock</span>
         </div>
@@ -71,26 +62,26 @@
             
             <div class="monster-stats">
               <h3 id="monsterName">Loading...</h3>
-              <span>Lvl <span id="monsterLvl">1</span></span>
             </div>
             
             <div id="damageOverlay"></div>
           </div>
         </div>
 
-        <div id="battleLog" class="battle-log">
-          <div class="log-entry">Searching for monster...</div>
-        </div>
+        <div id="battleLog" class="battle-log"></div>
 
-        <div class="battle-controls">
-          <button class="action-btn attack" onclick="performAttack()">
+        <div class="battle-controls-grid">
+          <button class="battle-btn attack" onclick="combatAction('attack')">
             <span class="material-icons-round">sword_forces</span> Attack
           </button>
-          <button class="action-btn heal" onclick="usePotion()">
-            <span class="material-icons-round">healing</span> Heal (10g)
+          <button class="battle-btn dodge" onclick="combatAction('dodge')">
+            <span class="material-icons-round">flash_on</span> Dodge
           </button>
-          <button class="action-btn flee" onclick="fleeBattle()">
-            <span class="material-icons-round">run_circle</span> Flee
+          <button class="battle-btn heal" onclick="combatAction('heal')">
+            <span class="material-icons-round">local_pharmacy</span> Heal (10g)
+          </button>
+          <button class="battle-btn flee" onclick="combatAction('flee')">
+            <span class="material-icons-round">logout</span> Retreat
           </button>
         </div>
       </div>
@@ -107,15 +98,15 @@
       <div class="profile-header">
         <img id="profileAvatar" src="" class="hero-avatar">
         <div class="hero-info">
-          <h2 id="heroName">Loading...</h2>
-          <div class="level-badge">Lvl <span id="heroLevel">1</span></div>
+          <h2 id="heroName">Hero</h2>
+          <div class="level-badge" id="heroCharName">Character</div>
         </div>
       </div>
 
       <div class="stats-container">
         <div class="stat-box">
           <span style="color:#ef4444">❤</span>
-          <span id="heroHp">100</span>
+          <span id="heroHp">100/100</span>
           <small>Health</small>
         </div>
         <div class="stat-box">
@@ -126,7 +117,7 @@
         <div class="stat-box">
           <span style="color:#3b82f6">⚔</span>
           <span id="heroAttack">10</span>
-          <small>Attack</small>
+          <small>Damage</small>
         </div>
       </div>
 
@@ -135,42 +126,44 @@
         <div class="xp-bar-bg"><div class="xp-bar-fill" id="heroXpBar" style="width: 0%"></div></div>
       </div>
 
-      <div class="section-title" style="margin-bottom:10px;"><h3>Inventory</h3></div>
-      <div class="inventory-grid" id="inventoryList">
-        <div style="grid-column:1/-1;text-align:center;opacity:0.5">Empty Bag</div>
-      </div>
+      <div class="section-title"><h3>Inventory</h3></div>
+      <div class="inventory-grid" id="inventoryList"></div>
     </section>
 
     <section id="tab-admin" class="page">
-      <div class="page-header"><h2>👑 Game Master</h2></div>
+      <div class="page-header"><h2>👑 Admin Panel</h2></div>
       <div class="menu-list">
         
-        <div class="admin-section" style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px; margin-bottom:15px;">
-            <h3 style="margin-bottom:10px; font-size:0.9rem">Add Shop Item</h3>
-            <input type="text" id="newItemName" placeholder="Item Name" class="admin-input">
-            <input type="text" id="newItemSlug" placeholder="Slug (e.g. fire_sword)" class="admin-input">
-            <div style="display:flex; gap:5px">
-                <input type="number" id="newItemPrice" placeholder="Price" class="admin-input">
-                <input type="number" id="newItemPower" placeholder="Power" class="admin-input">
+        <div class="admin-section">
+            <h3>Add Shop Item</h3>
+            <div class="admin-input-group">
+                <input type="text" id="admItemName" placeholder="Name (e.g. Sword)" class="admin-input">
+                <input type="text" id="admItemSlug" placeholder="Slug (e.g. sword_1)" class="admin-input">
+                <div style="display:flex;gap:5px">
+                    <input type="number" id="admItemPrice" placeholder="Price" class="admin-input">
+                    <input type="number" id="admItemPower" placeholder="Power" class="admin-input">
+                </div>
+                <select id="admItemType" class="admin-input">
+                    <option value="atk">Weapon (Attack)</option>
+                    <option value="def">Armor (Defense)</option>
+                    <option value="hp">Potion (Heal)</option>
+                </select>
+                <button class="gate-btn" onclick="adminAddItem()">Add Item</button>
             </div>
-            <select id="newItemType" class="admin-input" style="background:#000">
-                <option value="weapon">Weapon</option>
-                <option value="armor">Armor</option>
-                <option value="potion">Potion</option>
-            </select>
-            <button class="gate-btn" onclick="adminAddNewItem()">Add Item</button>
         </div>
 
-        <div class="admin-section" style="background:rgba(255,255,255,0.05); padding:15px; border-radius:12px;">
-            <h3 style="margin-bottom:10px; font-size:0.9rem">Add Monster</h3>
-            <input type="text" id="newMonName" placeholder="Name" class="admin-input">
-            <input type="text" id="newMonSlug" placeholder="Slug (unique)" class="admin-input">
-            <input type="text" id="newMonImg" placeholder="Image URL" class="admin-input">
-            <div style="display:flex; gap:5px">
-                <input type="number" id="newMonHp" placeholder="HP" class="admin-input">
-                <input type="number" id="newMonAtk" placeholder="ATK" class="admin-input">
+        <div class="admin-section" style="margin-top:20px;">
+            <h3>Add Monster</h3>
+            <div class="admin-input-group">
+                <input type="text" id="admMonName" placeholder="Monster Name" class="admin-input">
+                <input type="text" id="admMonSlug" placeholder="Slug (unique)" class="admin-input">
+                <input type="text" id="admMonImg" placeholder="Image URL" class="admin-input">
+                <div style="display:flex;gap:5px">
+                    <input type="number" id="admMonHp" placeholder="HP" class="admin-input">
+                    <input type="number" id="admMonAtk" placeholder="Attack" class="admin-input">
+                </div>
+                <button class="gate-btn" onclick="adminAddMonster()">Add Monster</button>
             </div>
-            <button class="gate-btn" onclick="adminAddNewMonster()">Add Monster</button>
         </div>
 
       </div>
