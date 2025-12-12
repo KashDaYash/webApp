@@ -32,10 +32,10 @@
       </div>
 
       <div id="arenaLobby">
-        <div class="mode-card" onclick="startAdventure()">
+        <div class="mode-card" onclick="startHuntMode()">
           <div class="mode-icon">🌲</div>
           <div class="mode-info">
-            <h3>Adventure</h3>
+            <h3>Adventure (PvE)</h3>
             <p>Hunt monsters & gain XP</p>
           </div>
           <span class="material-icons-round">chevron_right</span>
@@ -66,9 +66,11 @@
             <div class="hp-bar-wrapper">
               <div class="hp-bar-fill" id="monsterHpBar" style="width: 100%;"></div>
             </div>
+            
             <img id="monsterImage" src="https://placehold.co/150" class="monster-img floating">
+            
             <div class="monster-stats">
-              <h3 id="monsterName">Loading...</h3>
+              <h3 id="monsterName">Searching...</h3>
             </div>
             <div id="damageOverlay"></div>
           </div>
@@ -76,7 +78,16 @@
 
         <div id="battleLog" class="battle-log"></div>
 
-        <div class="battle-controls-grid">
+        <div id="huntControls" class="battle-controls-grid hidden">
+           <button class="battle-btn" style="background:var(--accent); color:black" onclick="searchNextMonster()">
+             <span class="material-icons-round">refresh</span> Next
+           </button>
+           <button class="battle-btn" style="background:var(--danger)" onclick="beginFight()">
+             <span class="material-icons-round">swords</span> Fight!
+           </button>
+        </div>
+
+        <div id="fightControls" class="battle-controls-grid hidden">
           <button class="battle-btn attack" onclick="combatAction('attack')">
             <span class="material-icons-round">sword_forces</span> Attack
           </button>
@@ -84,10 +95,10 @@
             <span class="material-icons-round">flash_on</span> Dodge
           </button>
           <button class="battle-btn heal" onclick="combatAction('heal')">
-            <span class="material-icons-round">local_pharmacy</span> Heal (10g)
+            <span class="material-icons-round">local_pharmacy</span> Heal
           </button>
           <button class="battle-btn flee" onclick="combatAction('flee')">
-            <span class="material-icons-round">logout</span> Retreat
+            <span class="material-icons-round">logout</span> Flee
           </button>
         </div>
       </div>
@@ -103,7 +114,7 @@
     <section id="tab-leaderboard" class="page">
       <div class="page-header"><h2>Leaderboard</h2></div>
       <div id="leaderboardList" class="menu-list">
-        <div style="text-align:center;padding:20px;opacity:0.6">Loading Rankings...</div>
+        <div style="text-align:center;padding:20px;opacity:0.6">Loading...</div>
       </div>
     </section>
 
@@ -151,15 +162,15 @@
             <h3>Add Shop Item</h3>
             <div class="admin-input-group">
                 <input type="text" id="admItemName" placeholder="Name" class="admin-input">
-                <input type="text" id="admItemSlug" placeholder="Slug" class="admin-input">
+                <input type="text" id="admItemSlug" placeholder="Slug (unique)" class="admin-input">
                 <div style="display:flex;gap:5px">
                     <input type="number" id="admItemPrice" placeholder="Price" class="admin-input">
                     <input type="number" id="admItemPower" placeholder="Power" class="admin-input">
                 </div>
                 <select id="admItemType" class="admin-input" style="background:#000; color:white">
-                    <option value="atk">Weapon</option>
-                    <option value="def">Armor</option>
-                    <option value="hp">Potion</option>
+                    <option value="atk">Weapon (Attack)</option>
+                    <option value="def">Armor (Defense)</option>
+                    <option value="hp">Potion (Heal)</option>
                 </select>
                 <button class="gate-btn" onclick="adminAddItem()">Add Item</button>
             </div>
