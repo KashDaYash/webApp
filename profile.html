@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1, minimum-scale=1"/>
   <title>RPG BattleBot</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
@@ -35,7 +35,7 @@
         <div class="mode-card" onclick="startAdventure()">
           <div class="mode-icon">🌲</div>
           <div class="mode-info">
-            <h3>Adventure (PvE)</h3>
+            <h3>Adventure</h3>
             <p>Hunt monsters & gain XP</p>
           </div>
           <span class="material-icons-round">chevron_right</span>
@@ -49,6 +49,15 @@
           </div>
           <span class="material-icons-round">lock</span>
         </div>
+        
+        <div class="mode-card locked" onclick="alert('Boss Raid Coming Soon!')">
+          <div class="mode-icon">🐲</div>
+          <div class="mode-info">
+            <h3>Boss Raid</h3>
+            <p>Team up against Titans</p>
+          </div>
+          <span class="material-icons-round">lock</span>
+        </div>
       </div>
 
       <div id="battleScreen" class="hidden">
@@ -57,13 +66,10 @@
             <div class="hp-bar-wrapper">
               <div class="hp-bar-fill" id="monsterHpBar" style="width: 100%;"></div>
             </div>
-            
             <img id="monsterImage" src="https://placehold.co/150" class="monster-img floating">
-            
             <div class="monster-stats">
               <h3 id="monsterName">Loading...</h3>
             </div>
-            
             <div id="damageOverlay"></div>
           </div>
         </div>
@@ -94,6 +100,13 @@
       </div>
     </section>
 
+    <section id="tab-leaderboard" class="page">
+      <div class="page-header"><h2>Leaderboard</h2></div>
+      <div id="leaderboardList" class="menu-list">
+        <div style="text-align:center;padding:20px;opacity:0.6">Loading Rankings...</div>
+      </div>
+    </section>
+
     <section id="tab-profile" class="page">
       <div class="profile-header">
         <img id="profileAvatar" src="" class="hero-avatar">
@@ -106,7 +119,7 @@
       <div class="stats-container">
         <div class="stat-box">
           <span style="color:#ef4444">❤</span>
-          <span id="heroHp">100/100</span>
+          <span id="heroHp">100</span>
           <small>Health</small>
         </div>
         <div class="stat-box">
@@ -137,16 +150,16 @@
         <div class="admin-section">
             <h3>Add Shop Item</h3>
             <div class="admin-input-group">
-                <input type="text" id="admItemName" placeholder="Name (e.g. Sword)" class="admin-input">
-                <input type="text" id="admItemSlug" placeholder="Slug (e.g. sword_1)" class="admin-input">
+                <input type="text" id="admItemName" placeholder="Name" class="admin-input">
+                <input type="text" id="admItemSlug" placeholder="Slug" class="admin-input">
                 <div style="display:flex;gap:5px">
                     <input type="number" id="admItemPrice" placeholder="Price" class="admin-input">
                     <input type="number" id="admItemPower" placeholder="Power" class="admin-input">
                 </div>
-                <select id="admItemType" class="admin-input">
-                    <option value="atk">Weapon (Attack)</option>
-                    <option value="def">Armor (Defense)</option>
-                    <option value="hp">Potion (Heal)</option>
+                <select id="admItemType" class="admin-input" style="background:#000; color:white">
+                    <option value="atk">Weapon</option>
+                    <option value="def">Armor</option>
+                    <option value="hp">Potion</option>
                 </select>
                 <button class="gate-btn" onclick="adminAddItem()">Add Item</button>
             </div>
@@ -155,12 +168,12 @@
         <div class="admin-section" style="margin-top:20px;">
             <h3>Add Monster</h3>
             <div class="admin-input-group">
-                <input type="text" id="admMonName" placeholder="Monster Name" class="admin-input">
-                <input type="text" id="admMonSlug" placeholder="Slug (unique)" class="admin-input">
+                <input type="text" id="admMonName" placeholder="Name" class="admin-input">
+                <input type="text" id="admMonSlug" placeholder="Slug" class="admin-input">
                 <input type="text" id="admMonImg" placeholder="Image URL" class="admin-input">
                 <div style="display:flex;gap:5px">
                     <input type="number" id="admMonHp" placeholder="HP" class="admin-input">
-                    <input type="number" id="admMonAtk" placeholder="Attack" class="admin-input">
+                    <input type="number" id="admMonAtk" placeholder="ATK" class="admin-input">
                 </div>
                 <button class="gate-btn" onclick="adminAddMonster()">Add Monster</button>
             </div>
@@ -179,6 +192,10 @@
     <div class="nav-item" onclick="switchTab('tab-shop', this)">
       <span class="material-icons-round">storefront</span>
       <span class="nav-text">Shop</span>
+    </div>
+    <div class="nav-item" onclick="switchTab('tab-leaderboard', this)">
+      <span class="material-icons-round">leaderboard</span>
+      <span class="nav-text">Rank</span>
     </div>
     <div class="nav-item" onclick="switchTab('tab-profile', this)">
       <span class="material-icons-round">account_circle</span>
