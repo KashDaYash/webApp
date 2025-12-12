@@ -7,17 +7,15 @@ module.exports = async (req, res) => {
     
     let { query, myId, page } = req.query;
     
-    // Page number (Default 1)
+    // Pagination
     const pageNum = parseInt(page) || 1;
     const limit = 10;
     const skip = (pageNum - 1) * limit;
 
-    // Ensure myId is number
     const excludeId = myId ? Number(myId) : 0;
-
     let filter = { tg_id: { $ne: excludeId } };
 
-    // Agar Search Query hai to filter add karo
+    // Search by Name
     if (query && query.trim() !== "") {
       filter.$or = [
         { username: { $regex: query, $options: 'i' } },
@@ -25,13 +23,12 @@ module.exports = async (req, res) => {
       ];
     }
 
-    // Database Query
-    // Sort by: Verify wale pehle, fir naye users (last_seen)
+    // GAMER QUERY: Sort by High Level -> Then Verified
     const users = await User.find(filter)
-      .sort({ is_verified: -1, last_seen: -1 }) 
+      .sort({ level: -1, xp: -1 }) // Highest Level First (Leaderboard)
       .skip(skip)
       .limit(limit)
-      .select('tg_id first_name username photo_url is_verified is_admin is_banned');
+      .select('tg_id first_name username photo_url level is_verified is_admin is_banned');
 
     res.json(users);
     
