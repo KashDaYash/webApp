@@ -9,7 +9,7 @@ const OWNER_ID = 1302298741;
 let userData = null;
 let currentBattle = null;
 
-// --- INITIALIZATION ---
+// --- INIT ---
 window.onload = () => {
   const gate = document.getElementById("loginGate");
   const app = document.getElementById("app");
@@ -22,17 +22,15 @@ window.onload = () => {
     return;
   }
 
-  // Show App
   if(gate) gate.classList.add("hidden");
   if(app) app.classList.remove("hidden");
   document.getElementById("bottomNav").classList.remove("hidden");
 
-  // Initial Sync
   syncUser();
   setTimeout(() => { if(loader) loader.style.display = "none"; }, 500);
 };
 
-// --- SYNC USER DATA ---
+// --- SYNC ---
 async function syncUser() {
   try {
     const res = await fetch('/api/syncUser', { 
@@ -40,7 +38,7 @@ async function syncUser() {
     });
     userData = await res.json();
     
-    // Check Admin Permission
+    // Admin Check
     if (userData.tg_id === OWNER_ID || userData.is_admin) {
         document.getElementById("navAdminBtn").style.display = "flex";
     }
@@ -54,33 +52,29 @@ async function syncUser() {
 function updateProfileUI() {
   if(!userData) return;
   
-  // Header
   document.getElementById("userGold").innerText = userData.coins || 0;
   document.getElementById("heroName").innerText = userData.first_name;
   
-  // Character
   const charName = userData.character_name || "Novice";
   document.getElementById("heroCharName").innerText = `${charName}`;
   const charImg = userData.character_image || userData.photo_url || "https://cdn-icons-png.flaticon.com/512/149/149071.png";
   document.getElementById("profileAvatar").src = charImg;
 
-  // Stats
   const maxHp = userData.max_hp || 100;
   const currentHp = userData.hp !== undefined ? userData.hp : maxHp;
   document.getElementById("heroHp").innerText = `${currentHp}/${maxHp}`;
   document.getElementById("heroEnergy").innerText = `${userData.energy || 20}/20`;
+  
   const minDmg = userData.damage_min || 5;
   const maxDmg = userData.damage_max || 10;
   document.getElementById("heroAttack").innerText = `${minDmg}-${maxDmg}`;
   
-  // XP
   const xp = userData.xp || 0;
   const maxXp = userData.max_xp || userData.exp_max || 100;
   const xpPercent = Math.min(100, (xp / maxXp) * 100);
   document.getElementById("heroXpBar").style.width = `${xpPercent}%`;
   document.getElementById("xpText").innerText = `${xp}/${maxXp}`;
 
-  // Inventory
   const invGrid = document.getElementById("inventoryList");
   if(userData.inventory && userData.inventory.length > 0) {
     invGrid.innerHTML = userData.inventory.map(item => `
@@ -95,7 +89,7 @@ function updateProfileUI() {
   }
 }
 
-// --- TAB SWITCHING ---
+// --- NAV ---
 window.switchTab = (tabId, navEl) => {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active-page'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -107,13 +101,13 @@ window.switchTab = (tabId, navEl) => {
   if(tabId === 'tab-leaderboard') loadLeaderboard();
 };
 
-// --- LEADERBOARD LOGIC ---
+// --- LEADERBOARD ---
 async function loadLeaderboard() {
   const list = document.getElementById("leaderboardList");
   list.innerHTML = `<div style="text-align:center;padding:20px;opacity:0.6">Loading...</div>`;
   
   try {
-    const res = await fetch(`/api/search?query=&page=1&myId=${u.id}`); // Reusing search API which sorts by level
+    const res = await fetch(`/api/search?query=&page=1&myId=${u.id}`);
     const users = await res.json();
     
     if(!users || users.length === 0) {
@@ -124,9 +118,9 @@ async function loadLeaderboard() {
     list.innerHTML = users.map((user, index) => {
       const rank = index + 1;
       let rankColor = "#aaa";
-      if(rank === 1) rankColor = "#ffd700"; // Gold
-      if(rank === 2) rankColor = "#c0c0c0"; // Silver
-      if(rank === 3) rankColor = "#cd7f32"; // Bronze
+      if(rank === 1) rankColor = "#ffd700"; 
+      if(rank === 2) rankColor = "#c0c0c0";
+      if(rank === 3) rankColor = "#cd7f32";
       
       return `
       <div class="leader-row">
@@ -139,30 +133,49 @@ async function loadLeaderboard() {
           </div>
         </div>
         <div class="leader-score">
-           ${user.is_verified ? 'Verified' : ''}
+           ${user.is_verified ? '<span class="material-icons-round verified-badge">verified</span>' : ''}
         </div>
       </div>
     `}).join('');
-    
   } catch(e) { list.innerHTML = "Error loading."; }
 }
 
-// --- BATTLE SYSTEM ---
-window.startAdventure = async () => {
-  if(userData.hp <= 0) { alert("You are too weak! Heal first."); return; }
+// --- HUNT & BATTLE ---
+window.startHuntMode = async () => {
+  if(userData.hp <= 0) { alert("You are dead! Heal first."); return; }
   
   document.getElementById("arenaLobby").classList.add("hidden");
   document.getElementById("battleScreen").classList.remove("hidden");
-  logBattle("🔍 Searching for monster...");
+  
+  // Controls Logic
+  document.getElementById("huntControls").classList.remove("hidden");
+  document.getElementById("fightControls").classList.add("hidden");
+  
+  searchNextMonster();
+};
 
+window.searchNextMonster = async () => {
+  const log = document.getElementById("battleLog");
+  log.innerHTML = `<div class="log-entry">🔍 Searching for monster...</div>`;
+  
   try {
     const res = await fetch(`/api/battle?action=start&id=${u.id}`);
     const data = await res.json();
     
     currentBattle = { monster: data.monster, currentMonsterHp: data.monster.hp };
-    updateBattleUI();
-    logBattle(`⚔️ A wild **${data.monster.name}** appeared!`);
-  } catch(e) { logBattle("Error finding monster."); }
+    
+    document.getElementById("monsterName").innerText = data.monster.name;
+    document.getElementById("monsterImage").src = data.monster.image_url || data.monster.img;
+    document.getElementById("monsterHpBar").style.width = "100%";
+    
+    log.innerHTML = `<div class="log-entry">✨ Found: <b>${data.monster.name}</b></div>`;
+  } catch(e) { log.innerHTML = "Error finding monster."; }
+};
+
+window.beginFight = () => {
+  document.getElementById("huntControls").classList.add("hidden");
+  document.getElementById("fightControls").classList.remove("hidden");
+  logBattle(`⚔️ Battle Started with ${currentBattle.monster.name}!`);
 };
 
 window.combatAction = async (type) => {
@@ -199,30 +212,23 @@ window.combatAction = async (type) => {
         });
         const winData = await winRes.json();
         
-        logBattle(`🏆 Victory! +${winData.coins} Coins`);
-        if(winData.levelUp) alert("🎉 LEVEL UP!");
+        logBattle(`🏆 <b>VICTORY!</b>`);
+        alert(`You Won!\n+${winData.coins} Coins\n+${winData.xp} XP`);
+        closeBattle();
+        syncUser();
         
-        setTimeout(() => { closeBattle(); syncUser(); }, 1500);
     } else if (result.outcome === 'loss') {
-        alert("💀 You Died!");
+        alert("💀 Defeated!");
         closeBattle(); syncUser();
     } else if (result.outcome === 'fled') {
         closeBattle();
     }
-    
     updateProfileUI();
 
   } catch(e) { console.error(e); }
 };
 
 // --- HELPERS ---
-function updateBattleUI() {
-  if(!currentBattle) return;
-  document.getElementById("monsterName").innerText = currentBattle.monster.name;
-  document.getElementById("monsterImage").src = currentBattle.monster.image_url || "https://placehold.co/150";
-  document.getElementById("monsterHpBar").style.width = `100%`;
-}
-
 function closeBattle() {
   document.getElementById("battleScreen").classList.add("hidden");
   document.getElementById("arenaLobby").classList.remove("hidden");
@@ -274,45 +280,48 @@ window.buyItem = async (slug) => {
   else alert(data.error);
 };
 
-// --- ADMIN ---
+// --- ADMIN INPUT CLEAR ---
 window.adminAddItem = async () => {
-    const name = document.getElementById("admItemName").value;
-    const slug = document.getElementById("admItemSlug").value;
-    const price = document.getElementById("admItemPrice").value;
-    const power = document.getElementById("admItemPower").value;
-    const type = document.getElementById("admItemType").value;
+    const nameEl = document.getElementById("admItemName");
+    const slugEl = document.getElementById("admItemSlug");
+    const priceEl = document.getElementById("admItemPrice");
+    const powerEl = document.getElementById("admItemPower");
+    const typeEl = document.getElementById("admItemType");
 
-    if(!name || !slug) return;
+    if(!nameEl.value || !slugEl.value) return;
 
     await fetch('/api/admin', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
             requester_id: u.id, action: 'add_item',
-            data: { name, slug, price: Number(price), power: Number(power), type, icon: '🎒' }
+            data: { name: nameEl.value, slug: slugEl.value, price: Number(priceEl.value), power: Number(powerEl.value), type: typeEl.value, icon: '🎒' }
         })
     });
     alert("Item Added!");
+    nameEl.value = ""; slugEl.value = ""; priceEl.value = ""; powerEl.value = "";
+    loadShop();
 };
 
 window.adminAddMonster = async () => {
-    const name = document.getElementById("admMonName").value;
-    const slug = document.getElementById("admMonSlug").value;
-    const img = document.getElementById("admMonImg").value;
-    const hp = document.getElementById("admMonHp").value;
-    const atk = document.getElementById("admMonAtk").value;
+    const nameEl = document.getElementById("admMonName");
+    const slugEl = document.getElementById("admMonSlug");
+    const imgEl = document.getElementById("admMonImg");
+    const hpEl = document.getElementById("admMonHp");
+    const atkEl = document.getElementById("admMonAtk");
 
-    if(!name || !slug) return;
+    if(!nameEl.value || !slugEl.value) return;
 
     await fetch('/api/admin', {
         method: 'POST', headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
             requester_id: u.id, action: 'add_monster',
             data: { 
-                name, slug, image_url: img, 
-                hp: Number(hp), max_hp: Number(hp), attack: Number(atk),
+                name: nameEl.value, slug: slugEl.value, image_url: imgEl.value, 
+                hp: Number(hpEl.value), max_hp: Number(hpEl.value), attack: Number(atkEl.value),
                 level: 10, reward_gold: 50
             }
         })
     });
     alert("Monster Added!");
+    nameEl.value = ""; slugEl.value = ""; imgEl.value = ""; hpEl.value = ""; atkEl.value = "";
 };
