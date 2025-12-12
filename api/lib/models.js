@@ -1,70 +1,47 @@
 const mongoose = require('mongoose');
 
-// 1. User Schema (The Player)
 const UserSchema = new mongoose.Schema({
   tg_id: { type: Number, required: true, unique: true },
   username: String,
   first_name: String,
-  photo_url: String,
+  photo_url: String, // User's Telegram Photo
   
-  // --- RPG Stats ---
+  // --- Game Profile (Based on Python Bot) ---
+  character_name: String, // e.g. "Ryuujin Kai"
+  character_image: String, // Character Image URL
+  character_stars: String, // e.g. "✪✪✪✪"
+  character_quote: String,
+  character_ability: String,
+
+  // --- Stats ---
   level: { type: Number, default: 1 },
   xp: { type: Number, default: 0 },
-  max_xp: { type: Number, default: 100 }, // XP needed for next level
-  gold: { type: Number, default: 50 },    // Currency
+  exp_max: { type: Number, default: 100 },
   
-  // Battle Stats
-  hp: { type: Number, default: 100 },      // Current Health
-  max_hp: { type: Number, default: 100 },  // Max Health capacity
-  attack: { type: Number, default: 10 },   // Damage dealt
-  defense: { type: Number, default: 2 },   // Damage reduction
-  energy: { type: Number, default: 20 },   // Stamina for fighting (regens over time)
+  hp: { type: Number, default: 100 },
+  max_hp: { type: Number, default: 100 },
+  defense: { type: Number, default: 10 },
+  damage_min: { type: Number, default: 5 },
+  damage_max: { type: Number, default: 10 },
   
-  // Equipment (Currently equipped)
-  equipped_weapon: { type: String, default: null }, // e.g., 'rusty_sword'
+  energy: { type: Number, default: 20 },
   
-  // Inventory (Items owned)
-  inventory: [{
-    item_id: String, // e.g., 'health_potion', 'iron_sword'
-    count: Number
-  }],
+  // --- Currency & Progress ---
+  coins: { type: Number, default: 100 }, // Gold/Coins
+  yashi: { type: Number, default: 0 },   // Premium Currency
+  kills: { type: Number, default: 0 },
+  
+  // --- Inventory & Pets ---
+  inventory: [{ name: String, type: String, value: Number, icon: String }],
+  pets: [{ name: String, level: Number, hp: Number, attack: Number, xp: Number }],
 
-  // Permissions
-  is_admin: { type: Boolean, default: false },
+  // --- System ---
   is_banned: { type: Boolean, default: false },
+  is_admin: { type: Boolean, default: false },
+  joined_date: { type: Date, default: Date.now },
   last_seen: { type: Date, default: Date.now }
 });
 
-// 2. Monster Schema (Enemies)
-const MonsterSchema = new mongoose.Schema({
-  slug: { type: String, required: true, unique: true }, // e.g., 'goblin_boss'
-  name: String,        // e.g., 'Drakor the Inferno'
-  image_url: String,   // URL of the image
-  type: String,        // 'fire', 'water', etc.
-  
-  level: Number,
-  hp: Number,
-  max_hp: Number,
-  attack: Number,
-  defense: Number,
-  
-  reward_xp: Number,
-  reward_gold: Number
-});
-
-// 3. Item Schema (Shop)
-const ItemSchema = new mongoose.Schema({
-  slug: { type: String, required: true, unique: true }, // 'sword_1'
-  name: String,
-  type: String, // 'weapon', 'armor', 'potion'
-  price: Number,
-  effect_stat: String, // 'attack', 'hp'
-  effect_value: Number,
-  image_url: String
-});
-
 module.exports = {
-  User: mongoose.models.User || mongoose.model('User', UserSchema),
-  Monster: mongoose.models.Monster || mongoose.model('Monster', MonsterSchema),
-  Item: mongoose.models.Item || mongoose.model('Item', ItemSchema)
+  User: mongoose.models.User || mongoose.model('User', UserSchema)
 };
