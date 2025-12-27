@@ -1,50 +1,66 @@
 const mongoose = require('mongoose');
 
+// --- USER SCHEMA ---
 const UserSchema = new mongoose.Schema({
-  tg_id: { type: Number, required: true, unique: true },
+  telegramId: { type: Number, required: true, unique: true },
+  name: String,
   username: String,
-  first_name: String,
-  photo_url: String, // Telegram Photo
+  avatar: String,
   
-  // --- RPG Character Info ---
-  character_name: String,   // e.g. Ryuujin Kai
-  character_image: String,  // Character Photo URL
-  character_class: String,  // e.g. Assassin/Mage
-  
-  // --- Battle Stats ---
+  // Game Stats
   level: { type: Number, default: 1 },
   xp: { type: Number, default: 0 },
   max_xp: { type: Number, default: 100 },
+  coins: { type: Number, default: 100 },
   
+  // Combat Stats
   hp: { type: Number, default: 100 },
   max_hp: { type: Number, default: 100 },
-  energy: { type: Number, default: 20 },
-  
   attack: { type: Number, default: 10 },
   defense: { type: Number, default: 5 },
-  speed: { type: Number, default: 5 }, // For Dodge chance
+  speed: { type: Number, default: 10 },
   
-  // --- Economy ---
-  coins: { type: Number, default: 100 },
+  // Collections
+  selectedCharacter: { type: String, default: 'Default Hero' },
+  ownedCharacters: [String],
+  pets: [String],
   inventory: [{ 
-    slug: String, 
     name: String, 
-    type: String, 
-    power: Number 
+    category: String, 
+    power: Number,
+    description: String 
   }],
-
-  // --- System ---
+  
+  // Settings
+  theme: { type: String, default: 'dark' }, // 'light' or 'dark'
+  last_seen: { type: Date, default: Date.now },
   is_banned: { type: Boolean, default: false },
-  is_admin: { type: Boolean, default: false },
-  last_seen: { type: Date, default: Date.now }
+  is_owner: { type: Boolean, default: false }
 });
 
-// Admin Monster Storage (Optional, mostly we use hardcoded for speed)
+// --- SHOP ITEM SCHEMA ---
+const ItemSchema = new mongoose.Schema({
+  name: String,
+  description: String,
+  price: Number,
+  category: String, // Fruits, Potions, Armor, Weapons
+  power: Number, // Effect value
+  image: String
+});
+
+// --- MONSTER SCHEMA ---
 const MonsterSchema = new mongoose.Schema({
-  slug: String, name: String, hp: Number, attack: Number, image_url: String
+  name: String,
+  level: Number,
+  hp: Number,
+  attack: Number,
+  image: String,
+  xp_reward: Number,
+  coin_reward: Number
 });
 
 module.exports = {
   User: mongoose.models.User || mongoose.model('User', UserSchema),
+  Item: mongoose.models.Item || mongoose.model('Item', ItemSchema),
   Monster: mongoose.models.Monster || mongoose.model('Monster', MonsterSchema)
 };
