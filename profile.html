@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, maximum-scale=1, minimum-scale=1"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no"/>
   <title>RPG BattleBot</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
@@ -11,229 +11,125 @@
 <body>
 
   <div id="loadingScreen">
-    <div class="progress-wrapper"><div id="progressBar" class="progress-bar"></div></div>
+    <div class="spinner"></div>
   </div>
 
-  <div id="loginGate" class="login-gate hidden">
-    <div class="gate-content">
-      <div class="gate-icon">⚔️</div>
-      <h1>Enter the Arena</h1>
-      <p>The ultimate RPG experience.</p>
-      <a href="javascript:void(0)" onclick="location.reload()" class="gate-btn">Start Game</a>
-    </div>
-  </div>
-
-  <main id="app" class="hidden">
+  <main id="app">
     
-    <section id="tab-arena" class="page active-page">
-      <div class="page-header">
-        <h2>Battle Arena</h2>
-        <div class="gold-display">💰 <span id="userGold">0</span></div>
-      </div>
-
-      <div id="arenaLobby">
-        <div class="mode-card" onclick="startHuntMode()">
+    <section id="tab-modes" class="page active-page">
+      <div class="page-header"><h2>Battle Modes</h2></div>
+      <div class="modes-container">
+        <div class="mode-card" onclick="startBattle('pvm')">
           <div class="mode-icon">🌲</div>
-          <div class="mode-info">
-            <h3>Adventure (PvE)</h3>
-            <p>Hunt monsters & gain XP</p>
-          </div>
-          <span class="material-icons-round">chevron_right</span>
+          <h3>Adventure (PvM)</h3>
+          <p>Fight Monsters</p>
         </div>
-
-        <div class="mode-card locked" onclick="alert('PvP Arena Coming Soon!')">
+        <div class="mode-card" onclick="startBattle('pvp')">
           <div class="mode-icon">⚔️</div>
-          <div class="mode-info">
-            <h3>PvP Arena</h3>
-            <p>Duel other players</p>
-          </div>
-          <span class="material-icons-round">lock</span>
-        </div>
-        
-        <div class="mode-card locked" onclick="alert('Boss Raid Coming Soon!')">
-          <div class="mode-icon">🐲</div>
-          <div class="mode-info">
-            <h3>Boss Raid</h3>
-            <p>Team up against Titans</p>
-          </div>
-          <span class="material-icons-round">lock</span>
+          <h3>Arena (PvP)</h3>
+          <p>Matchmaking (±1 Lvl)</p>
         </div>
       </div>
-
-      <div id="battleScreen" class="hidden">
-        <div class="battle-stage">
-          <div class="monster-container">
-            <div class="hp-bar-wrapper">
-              <div class="hp-bar-fill" id="monsterHpBar" style="width: 100%;"></div>
-            </div>
-            
-            <img id="monsterImage" src="https://placehold.co/150" class="monster-img floating">
-            
-            <div class="monster-stats">
-              <h3 id="monsterName">Searching...</h3>
-            </div>
-            
-            <div id="damageOverlay"></div>
+      
+      <div id="battleOverlay" class="hidden">
+        <div class="battle-ui">
+          <div class="enemy-display">
+            <img id="enemyImg" src="">
+            <h3 id="enemyName">Enemy</h3>
+            <div class="hp-bar"><div id="enemyHpBar" style="width:100%"></div></div>
           </div>
+          <div id="battleLog">Starting...</div>
+          <button class="action-btn" onclick="performAttack()">⚔️ Attack</button>
+          <button class="action-btn secondary" onclick="closeBattle()">🏃 Run</button>
         </div>
-
-        <div id="battleLog" class="battle-log"></div>
-
-        <div id="huntControls" class="battle-controls-grid hidden">
-           <button class="battle-btn" style="background:var(--accent); color:black" onclick="searchNextMonster()">
-             <span class="material-icons-round">refresh</span> Next
-           </button>
-           <button class="battle-btn" style="background:var(--danger)" onclick="beginFight()">
-             <span class="material-icons-round">swords</span> Fight!
-           </button>
-        </div>
-
-        <div id="fightControls" class="battle-controls-grid hidden">
-          <button class="battle-btn attack" onclick="combatAction('attack')">
-            <span class="material-icons-round">sword_forces</span> Attack
-          </button>
-          <button class="battle-btn dodge" onclick="combatAction('dodge')">
-            <span class="material-icons-round">flash_on</span> Dodge
-          </button>
-          <button class="battle-btn heal" onclick="combatAction('heal')">
-            <span class="material-icons-round">local_pharmacy</span> Heal
-          </button>
-          <button class="battle-btn flee" onclick="combatAction('flee')">
-            <span class="material-icons-round">logout</span> Flee
-          </button>
-        </div>
-      </div>
-    </section>
-
-    <section id="tab-shop" class="page">
-      <div class="page-header"><h2>Blacksmith</h2></div>
-      <div class="shop-grid" id="shopList">
-        <div style="grid-column:1/-1;text-align:center;padding:20px;opacity:0.6">Loading Shop...</div>
       </div>
     </section>
 
     <section id="tab-leaderboard" class="page">
       <div class="page-header"><h2>Leaderboard</h2></div>
-      <div id="leaderboardList" class="menu-list">
-        <div style="text-align:center;padding:20px;opacity:0.6">Loading...</div>
+      <div id="leaderboardList" class="list-container"></div>
+    </section>
+
+    <section id="tab-shop" class="page">
+      <div class="page-header">
+        <h2>Shop</h2>
+        <div class="coin-balance">💰 <span id="shopCoins">0</span></div>
       </div>
+      <div class="shop-tabs">
+        <button class="shop-tab active" onclick="filterShop('Fruits')">Fruits</button>
+        <button class="shop-tab" onclick="filterShop('Potions')">Potions</button>
+        <button class="shop-tab" onclick="filterShop('Armor')">Armor</button>
+        <button class="shop-tab" onclick="filterShop('Weapons')">Weapons</button>
+      </div>
+      <div id="shopGrid" class="shop-grid"></div>
     </section>
 
     <section id="tab-profile" class="page">
-      <div class="profile-header">
-        <img id="profileAvatar" src="" class="hero-avatar">
-        <div class="hero-info">
-          <h2 id="heroName">Loading...</h2>
-          <div class="level-badge" id="heroCharName">Character</div>
+      <div class="profile-header-grid">
+        <div class="ph-left">
+          <img id="userAvatar" src="" alt="DP">
+        </div>
+        <div class="ph-center">
+          <h2 id="userName">Name</h2>
+          <span id="userHandle">@username</span>
+        </div>
+        <div class="ph-right">
+          <button class="theme-toggle" onclick="toggleTheme()">
+            <span id="themeIcon">🌙</span>
+          </button>
         </div>
       </div>
 
-      <div class="stats-container">
-        <div class="stat-box">
-          <span style="color:#ef4444">❤</span>
-          <span id="heroHp">100/100</span>
-          <small>Health</small>
+      <div class="stats-card">
+        <div class="stat-row">
+          <span>❤️ HP</span> <span id="statHp">100</span>
         </div>
-        <div class="stat-box">
-          <span style="color:#f59e0b">⚡</span>
-          <span id="heroEnergy">20</span>
-          <small>Energy</small>
+        <div class="stat-row">
+          <span>⚔️ Attack</span> <span id="statAtk">10</span>
         </div>
-        <div class="stat-box">
-          <span style="color:#3b82f6">⚔</span>
-          <span id="heroAttack">10</span>
-          <small>Damage</small>
+        <div class="stat-row">
+          <span>🛡️ Defense</span> <span id="statDef">5</span>
+        </div>
+        <div class="stat-row">
+          <span>⚡ Speed</span> <span id="statSpd">10</span>
         </div>
       </div>
 
-      <div class="xp-container">
-        <div class="xp-label"><span>XP Progress</span><span id="xpText">0/100</span></div>
-        <div class="xp-bar-bg"><div class="xp-bar-fill" id="heroXpBar" style="width: 0%"></div></div>
-      </div>
-
-      <div class="section-title"><h3>Inventory</h3></div>
-      <div class="inventory-grid" id="inventoryList">
-        <div style="grid-column:1/-1;text-align:center;opacity:0.5">Empty Bag</div>
+      <div class="xp-section">
+        <div class="xp-info">
+          <span>Lvl <span id="userLevel">1</span></span>
+          <span id="xpText">0 / 100 XP</span>
+        </div>
+        <div class="xp-bar-bg"><div id="xpBarFill" class="xp-bar-fill"></div></div>
       </div>
     </section>
 
-    <section id="tab-admin" class="page">
+    <section id="tab-admin" class="page hidden">
       <div class="page-header"><h2>👑 Admin Panel</h2></div>
-      <div class="menu-list">
-        
-        <div class="admin-section">
-            <h3>Add Shop Item</h3>
-            <div class="admin-input-group">
-                <input type="text" id="admItemName" placeholder="Name (e.g. Sword)" class="admin-input">
-                <input type="text" id="admItemSlug" placeholder="Slug (unique)" class="admin-input">
-                <div style="display:flex;gap:5px">
-                    <input type="number" id="admItemPrice" placeholder="Price" class="admin-input">
-                    <input type="number" id="admItemPower" placeholder="Power" class="admin-input">
-                </div>
-                <select id="admItemType" class="admin-input" style="background:#000; color:white">
-                    <option value="atk">Weapon (Attack)</option>
-                    <option value="def">Armor (Defense)</option>
-                    <option value="hp">Potion (Heal)</option>
-                </select>
-                <button class="gate-btn" onclick="adminAddItem()">Add Item</button>
-            </div>
-        </div>
-
-        <div class="admin-section" style="margin-top:15px;">
-            <h3>Add Monster</h3>
-            <div class="admin-input-group">
-                <input type="text" id="admMonName" placeholder="Monster Name" class="admin-input">
-                <input type="text" id="admMonSlug" placeholder="Slug (unique)" class="admin-input">
-                <input type="text" id="admMonImg" placeholder="Image URL" class="admin-input">
-                <div style="display:flex;gap:5px">
-                    <input type="number" id="admMonHp" placeholder="HP" class="admin-input">
-                    <input type="number" id="admMonAtk" placeholder="ATK" class="admin-input">
-                </div>
-                <button class="gate-btn" onclick="adminAddMonster()">Add Monster</button>
-            </div>
-        </div>
-
-        <div class="admin-section" style="margin-top:15px; border-color:var(--success)">
-            <h3 style="color:var(--success)">Manage User (God Mode)</h3>
-            <div class="admin-input-group">
-                <input type="number" id="admTargetId" placeholder="User ID" class="admin-input">
-                <div style="display:flex;gap:5px">
-                    <select id="admBuffType" class="admin-input" style="background:#000;color:white">
-                        <option value="hp">Full Heal</option>
-                        <option value="coins">Give Coins</option>
-                        <option value="atk">Boost Attack</option>
-                    </select>
-                    <input type="number" id="admBuffAmt" placeholder="Amount" class="admin-input">
-                </div>
-                <button class="gate-btn" style="background:var(--success)" onclick="adminBuffUser()">Apply</button>
-            </div>
-        </div>
-
+      <div class="admin-menu">
+        <button onclick="adminAction('add_monster')">Add Monster</button>
+        <button onclick="adminAction('add_item')">Add Shop Item</button>
+        <button onclick="adminAction('gift_item')">Gift Item</button>
       </div>
     </section>
 
   </main>
 
-  <nav id="bottomNav" class="bottom-nav hidden">
-    <div class="nav-item active" onclick="switchTab('tab-arena', this)">
-      <span class="material-icons-round">swords</span>
-      <span class="nav-text">Arena</span>
-    </div>
-    <div class="nav-item" onclick="switchTab('tab-shop', this)">
-      <span class="material-icons-round">storefront</span>
-      <span class="nav-text">Shop</span>
+  <nav class="bottom-nav">
+    <div class="nav-item" onclick="switchTab('tab-modes', this)">
+      <span class="material-icons-round">sports_esports</span>
     </div>
     <div class="nav-item" onclick="switchTab('tab-leaderboard', this)">
       <span class="material-icons-round">leaderboard</span>
-      <span class="nav-text">Rank</span>
     </div>
-    <div class="nav-item" onclick="switchTab('tab-profile', this)">
-      <span class="material-icons-round">account_circle</span>
-      <span class="nav-text">Hero</span>
+    <div class="nav-item" onclick="switchTab('tab-shop', this)">
+      <span class="material-icons-round">storefront</span>
     </div>
-    <div class="nav-item" id="navAdminBtn" onclick="switchTab('tab-admin', this)" style="display:none">
+    <div class="nav-item active" onclick="switchTab('tab-profile', this)">
+      <span class="material-icons-round">person</span>
+    </div>
+    <div class="nav-item hidden" id="navAdmin" onclick="switchTab('tab-admin', this)">
       <span class="material-icons-round">admin_panel_settings</span>
-      <span class="nav-text">Admin</span>
     </div>
   </nav>
 
