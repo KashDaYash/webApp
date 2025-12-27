@@ -1,149 +1,82 @@
 const connectDB = require('./lib/db');
 const { User, Monster } = require('./lib/models');
 
-// ➤ FIXED MONSTER DATABASE (Using your uploaded images)
-const HARDCODED_MONSTERS = [
-  // Small Mobs
-  { slug: 'goblin', name: 'Sneaky Goblin', hp: 30, atk: 5, coins: 10, img: 'https://cdn-icons-png.flaticon.com/512/3062/3062634.png' },
-  { slug: 'wolf', name: 'Dire Wolf', hp: 50, atk: 8, coins: 20, img: 'https://cdn-icons-png.flaticon.com/512/616/616554.png' },
-
-  // BOSSES (Your Images)
-  { slug: 'silicox', name: 'Silicox', hp: 140, atk: 12, coins: 100, img: 'https://files.catbox.moe/rnad1x.jpg' },
-  { slug: 'drakor', name: 'Drakor', hp: 150, atk: 15, coins: 120, img: 'https://files.catbox.moe/yjqp8n.jpg' },
-  { slug: 'grudor', name: 'Grudor', hp: 160, atk: 10, coins: 110, img: 'https://files.catbox.moe/5xprol.jpg' },
-  { slug: 'zarnok', name: 'Zarnok', hp: 135, atk: 14, coins: 115, img: 'https://files.catbox.moe/avzr6a.jpg' },
-  { slug: 'venmora', name: 'Venmora', hp: 145, atk: 13, coins: 105, img: 'https://files.catbox.moe/2gjal5.jpg' },
-  { slug: 'abyzoth', name: 'Abyzoth', hp: 155, atk: 16, coins: 130, img: 'https://files.catbox.moe/xdwbyu.jpg' },
-  { slug: 'floraxa', name: 'Floraxa', hp: 160, atk: 14, coins: 125, img: 'https://files.catbox.moe/msdb4a.jpg' },
-  { slug: 'nimbrax', name: 'Nimbrax', hp: 150, atk: 15, coins: 130, img: 'https://files.catbox.moe/pxe6dd.jpg' },
-  { slug: 'glacier', name: 'Glacier', hp: 140, atk: 11, coins: 100, img: 'https://files.catbox.moe/1000389888.jpg' }, // Assuming mapped
-  { slug: 'voltrix', name: 'Voltrix', hp: 138, atk: 12, coins: 100, img: 'https://files.catbox.moe/1000389679.jpg' }  // Assuming mapped
-];
-
 const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
 module.exports = async (req, res) => {
   await connectDB();
-  const method = req.method;
-  const body = method === 'POST' ? req.body : req.query;
-  const { action, id, userId, monsterId } = body;
+  const { action, telegramId, mode, targetId } = req.body;
 
-  try {
-    // 1. START HUNT (Return Random Monster)
-    if (action === 'start' || (method === 'GET' && action === 'start')) {
-        // Fetch DB Monsters (Added via Admin)
-        const dbMonsters = await Monster.find({});
-        const allMonsters = [...HARDCODED_MONSTERS, ...dbMonsters];
-        
-        const random = allMonsters[Math.floor(Math.random() * allMonsters.length)];
-        
-        return res.json({ 
-            monster: {
-                slug: random.slug,
-                name: random.name,
-                hp: random.hp,
-                max_hp: random.hp, // Critical for bar calculation
-                img: random.img || random.image_url || "https://placehold.co/150"
-            } 
-        });
-    }
+  const user = await User.findOne({ telegramId });
+  if (!user) return res.status(404).json({ error: "User not found" });
 
-    // 2. COMBAT ACTION
-    if (action === 'attack' || action === 'dodge' || action === 'heal' || action === 'flee') {
-        const user = await User.findOne({ tg_id: userId });
-        const dbMonster = await Monster.findOne({ slug: monsterId });
-        const hardMonster = HARDCODED_MONSTERS.find(m => m.slug === monsterId);
-        const monster = dbMonster || hardMonster || HARDCODED_MONSTERS[0];
+  // --- 1. FIND MATCH (PvP or PvM) ---
+  if (action === 'find_match') {
+    if (mode === 'pvm') {
+      // Find Monster near user level
+      const monsters = await Monster.find({});
+      const monster = monsters.length > 0 ? monsters[Math.floor(Math.random() * monsters.length)] : {
+        name: "Wild Goblin", hp: 50, attack: 5, level: 1, xp_reward: 10, coin_reward: 5, image: "https://cdn-icons-png.flaticon.com/512/3062/3062634.png"
+      };
+      return res.json({ type: 'pvm', enemy: monster });
+    } 
+    
+    if (mode === 'pvp') {
+      // Matchmaking: Level ± 1
+      const opponent = await User.findOne({
+        telegramId: { $ne: user.telegramId },
+        level: { $gte: user.level - 1, $lte: user.level + 1 }
+      });
 
-        let msg = "";
-        let playerDmg = 0;
-        let enemyDmg = 0;
-        let outcome = "continue";
-
-        // Logic
-        if (action === 'attack') {
-            playerDmg = rand(user.damage_min || 5, user.damage_max || 10);
-            enemyDmg = Math.max(1, (monster.atk || 10) - Math.floor((user.defense || 0)/5));
-            msg = `You hit ${playerDmg}! It hit ${enemyDmg}.`;
+      if (!opponent) return res.json({ error: "No opponent found nearby!" });
+      
+      return res.json({ 
+        type: 'pvp', 
+        enemy: { 
+          name: opponent.name, 
+          hp: opponent.hp, 
+          attack: opponent.attack, 
+          image: opponent.avatar,
+          telegramId: opponent.telegramId 
         } 
-        else if (action === 'dodge') {
-            if (Math.random() > 0.5) {
-                playerDmg = Math.floor(user.attack * 0.5);
-                msg = `Dodged! Counter-attack ${playerDmg}.`;
-            } else {
-                enemyDmg = monster.atk || 10;
-                msg = `Dodge failed! Took ${enemyDmg} dmg.`;
-            }
-        }
-        else if (action === 'heal') {
-            if (user.coins >= 10) {
-                user.coins -= 10;
-                user.hp = Math.min(user.hp + 30, user.max_hp);
-                enemyDmg = Math.floor((monster.atk || 10) / 2);
-                msg = `Healed (+30HP). Took ${enemyDmg} dmg.`;
-            } else {
-                msg = "Not enough coins!";
-                enemyDmg = monster.atk || 10;
-            }
-        }
-        else if (action === 'flee') {
-            outcome = "fled";
-            msg = "You ran away!";
-        }
-
-        // Apply Damage
-        if (outcome !== 'fled') {
-            user.hp -= enemyDmg;
-            if (user.hp <= 0) {
-                user.hp = 0;
-                outcome = "loss";
-                msg = "Defeated...";
-            }
-        }
-        await user.save();
-
-        return res.json({
-            dmg_dealt: playerDmg,
-            dmg_taken: enemyDmg,
-            user_hp: user.hp,
-            user_coins: user.coins,
-            outcome: outcome,
-            msg: msg,
-            reward_coins: monster.coins || 10
-        });
+      });
     }
+  }
 
-    // 3. CLAIM WIN
-    if (action === 'claim_win') {
-        const user = await User.findOne({ tg_id: userId });
-        // Find monster info for rewards
-        const dbMonster = await Monster.findOne({ slug: monsterId });
-        const hardMonster = HARDCODED_MONSTERS.find(m => m.slug === monsterId);
-        const monster = dbMonster || hardMonster;
-        
-        const reward = monster ? (monster.coins || 50) : 20;
-        const xp = reward; // Simple 1:1
+  // --- 2. BATTLE TURN ---
+  if (action === 'attack') {
+    // Simple turn logic
+    const dmg = Math.floor(user.attack * (1 + Math.random() * 0.2));
+    // Enemy dmg logic handled on frontend or stored session for simplicity in this demo
+    return res.json({ dmg: dmg });
+  }
 
-        user.coins += reward;
-        user.xp += xp;
-        
-        // Level up
-        let levelUp = false;
-        if (user.xp >= user.exp_max) {
-            user.level++;
-            user.xp = 0;
-            user.exp_max = Math.floor(user.exp_max * 1.5);
-            user.max_hp += 20;
-            user.hp = user.max_hp;
-            levelUp = true;
-        }
-        await user.save();
-        return res.json({ coins: reward, xp: xp, levelUp: levelUp });
+  // --- 3. BATTLE RESULT ---
+  if (action === 'result') {
+    const { win, type } = req.body;
+    
+    if (win) {
+      user.xp += 5;
+      user.coins += 10; // Base reward
+      
+      // Level Up Logic
+      if (user.xp >= user.max_xp) {
+        user.level += 1;
+        user.xp = 0;
+        user.max_xp = Math.floor(user.max_xp * 1.5);
+        user.max_hp += 10;
+        user.attack += 2;
+        user.hp = user.max_hp; // Heal on level up
+      }
+    } else {
+      user.xp += 1; // Pity XP
+      user.coins = Math.max(0, user.coins - 5); // Deduct coins
     }
-
-    return res.json({ error: "Invalid" });
-
-  } catch (e) {
-    return res.status(500).json({ error: e.message });
+    
+    await user.save();
+    return res.json({ 
+      success: true, 
+      user: { level: user.level, xp: user.xp, coins: user.coins, max_xp: user.max_xp } 
+    });
   }
 };
